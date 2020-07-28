@@ -5,6 +5,7 @@
 // 9600 57600 works fine, 115200 not working
 #include <SoftwareSerial.h>
 
+// tested with SIM7020E, 9600bps, 
 
 #define D5 (18)
 #define D6 (19)
