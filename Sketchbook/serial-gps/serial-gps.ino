@@ -13,7 +13,7 @@
 //#define D8 (5)
 //#define TX (1)
 
-#define BAUD_RATE 9600
+#define BAUD_RATE 115200
 
 
 // Reminder: the buffer size optimizations here, in particular the isrBufSize that only accommodates
@@ -22,7 +22,7 @@
 SoftwareSerial swSer;
 
 void setup() {
-	Serial.begin(9600);
+	Serial.begin(115200);
 	swSer.begin(BAUD_RATE, SWSERIAL_8N1, D5, D6, false, 95, 11);
 
 	Serial.println("\nSoftware serial test started");
