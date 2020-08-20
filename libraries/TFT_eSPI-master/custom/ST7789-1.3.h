@@ -4,7 +4,7 @@
 
 #define ST7789_DRIVER
 
-#define TFT_WIDTH  135
+#define TFT_WIDTH  240
 #define TFT_HEIGHT 240
 
 #define CGRAM_OFFSET      // Library will add offsets required

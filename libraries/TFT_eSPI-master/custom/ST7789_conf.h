@@ -37,7 +37,7 @@
 
 // Only define one driver, the other ones must be commented out
 //#define ILI9341_DRIVER
-#define ST7735_DRIVER      // Define additional parameters below for this display
+//#define ST7735_DRIVER      // Define additional parameters below for this display
 //#define ILI9163_DRIVER     // Define additional parameters below for this display
 //#define S6D02A1_DRIVER
 //#define RPI_ILI9486_DRIVER // 20MHz maximum SPI
@@ -46,7 +46,7 @@
 //#define ILI9486_DRIVER
 //#define ILI9488_DRIVER     // WARNING: Do not connect ILI9488 display SDO to MISO if other devices share the SPI bus (TFT SDO does NOT tristate when CS is high)
 //#define ST7789_DRIVER      // Full configuration option, define additional parameters below for this display
-//#define ST7789_2_DRIVER    // Minimal configuration option, define additional parameters below for this display
+#define ST7789_2_DRIVER    // Minimal configuration option, define additional parameters below for this display
 //#define R61581_DRIVER
 //#define RM68140_DRIVER
 //#define ST7796_DRIVER
@@ -71,12 +71,12 @@
 // #define M5STACK
 
 // For ST7789, ST7735 and ILI9163 ONLY, define the pixel width and height in portrait orientation
- #define TFT_WIDTH  80
-// #define TFT_WIDTH  128
+// #define TFT_WIDTH  80
+ #define TFT_WIDTH  135
 // #define TFT_WIDTH  240 // ST7789 240 x 240 and 240 x 320
- #define TFT_HEIGHT 160
+// #define TFT_HEIGHT 160
 // #define TFT_HEIGHT 128
-// #define TFT_HEIGHT 240 // ST7789 240 x 240
+ #define TFT_HEIGHT 240 // ST7789 240 x 240
 // #define TFT_HEIGHT 320 // ST7789 240 x 320
 
 // For ST7735 ONLY, define the type of display, originally this was based on the
@@ -86,7 +86,7 @@
 // Comment out ALL BUT ONE of these options for a ST7735 display driver, save this
 // this User_Setup file, then rebuild and upload the sketch to the board again:
 
- #define ST7735_INITB
+// #define ST7735_INITB
 // #define ST7735_GREENTAB
 // #define ST7735_GREENTAB2
 // #define ST7735_GREENTAB3
@@ -194,6 +194,7 @@
 #define TFT_CS    5  // Chip select control pin
 #define TFT_DC   16  // Data Command control pin
 #define TFT_RST  23  // Reset pin (could connect to RST pin)
+
 //#define TFT_RST  -1  // Set TFT_RST to -1 if display RESET is connected to ESP32 board RST
 
 //#define TOUCH_CS 21     // Chip select pin (T_CS) of touch screen
@@ -305,8 +306,8 @@
 // #define SPI_FREQUENCY   1000000
 // #define SPI_FREQUENCY   5000000
 // #define SPI_FREQUENCY  10000000
- #define SPI_FREQUENCY  20000000
-//#define SPI_FREQUENCY  27000000
+// #define SPI_FREQUENCY  20000000
+#define SPI_FREQUENCY  27000000
 // #define SPI_FREQUENCY  40000000
 // #define SPI_FREQUENCY  55000000 // STM32 SPI1 only (SPI2 maximum is 27MHz)
 // #define SPI_FREQUENCY  80000000
