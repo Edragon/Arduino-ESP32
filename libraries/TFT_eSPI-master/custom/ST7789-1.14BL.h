@@ -13,7 +13,7 @@
 
 
 #define TFT_RST             23
-#define TFT_DC              4
+#define TFT_DC              16
 #define TFT_MOSI            19
 #define TFT_SCLK            18
 #define TFT_CS              5

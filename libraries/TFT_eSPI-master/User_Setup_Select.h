@@ -21,8 +21,11 @@
 
 //#include <User_Setup-3.h>           // Default setup is root library folder
 
+//#include <custom/ST7735-096.h>
 
-#include <custom/ST7789-1.3.h>
+#include <custom/ST7735-1.8.h>
+
+//#include <custom/ST7789-1.14.h>
 
 //#include <User_Setups/Setup1_ILI9341.h>  // Setup file configured for my ILI9341
 //#include <User_Setups/Setup2_ST7735.h>   // Setup file configured for my ST7735
