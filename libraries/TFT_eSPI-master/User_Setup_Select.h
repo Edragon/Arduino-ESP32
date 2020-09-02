@@ -23,7 +23,9 @@
 
 //#include <custom/ST7735-096.h>
 
-#include <custom/ST7735-1.8.h>
+//#include <custom/ST7789-1.14.h>
+
+#include <custom/ST7789-2.0.h>
 
 //#include <custom/ST7789-1.14.h>
 
