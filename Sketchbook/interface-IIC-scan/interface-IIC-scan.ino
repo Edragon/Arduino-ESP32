@@ -1,5 +1,5 @@
-I2C device found at address 0x3C  !
-I2C device found at address 0x75  !
+//I2C device found at address 0x3C  !
+//I2C device found at address 0x75  !
 
 
 #include <Wire.h>

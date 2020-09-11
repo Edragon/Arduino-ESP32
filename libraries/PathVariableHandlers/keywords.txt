@@ -1,0 +1,12 @@
+PathVariableHandler	KEYWORD1
+TokenIterator       KEYWORD1
+UrlTokenBindings    KEYWORD1
+
+hasBinding          KEYWORD2
+get                 KEYWORD2
+hasNext             KEYWORD2
+next                KEYWORD2
+canHandle           KEYWORD2
+handle              KEYWORD2
+handleRequest       KEYWORD2
+handleBody          KEYWORD2

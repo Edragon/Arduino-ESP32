@@ -1,0 +1,29 @@
+{
+  "name": "PathVariableHandlers",
+  "keywords": "rest, http, path variable",
+  "description": "Library for handling HTTP/REST paths containing variables",
+  "repository":
+  {
+    "type": "git",
+    "url": "https://github.com/sidoh/path_variable_handlers.git"
+  },
+  "authors":
+  [
+    {
+      "name": "Chris Mullins",
+      "email": "chris@sidoh.org",
+      "url": "http://github.com/sidoh",
+      "maintainer": true
+    }
+  ],
+  "license": "MIT",
+  "dependencies": { },
+  "version": "2.0.0",
+  "frameworks": "arduino",
+  "platforms": "*",
+  "examples": "examples/*/*.ino",
+  "exclude": [
+    "platformio.ini",
+    "test"
+  ]
+}
