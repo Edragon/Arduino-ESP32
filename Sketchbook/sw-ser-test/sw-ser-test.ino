@@ -7,13 +7,11 @@
 
 // tested with SIM7020E, 9600bps, 
 
-#define D5 (18)
-#define D6 (19)
-//#define D7 (23)
-//#define D8 (5)
-//#define TX (1)
+#define D5 (25)
+#define D6 (26)
 
-#define BAUD_RATE 9600
+
+#define BAUD_RATE 57600
 
 
 // Reminder: the buffer size optimizations here, in particular the isrBufSize that only accommodates
@@ -22,7 +20,7 @@
 SoftwareSerial swSer;
 
 void setup() {
-	Serial.begin(9600);
+	Serial.begin(57600);
 	swSer.begin(BAUD_RATE, SWSERIAL_8N1, D5, D6, false, 95, 11);
 
 	Serial.println("\nSoftware serial test started");

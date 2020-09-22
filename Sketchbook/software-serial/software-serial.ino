@@ -2,11 +2,13 @@
 #include <SoftwareSerial.h>
 
 
-SoftwareSerial mySerial(2, 3); // RX, TX
+SoftwareSerial mySerial(25, 26); // RX, TX
 
 void setup() {
-  Serial.begin(115200);
-  mySerial.begin("ESP32test"); //Bluetooth device name
+  Serial.begin(57600);
+  mySerial.begin(57600); 
+  
+  mySerial.println("ESP32test!");
   Serial.println("ESP32test!");
 }
 
@@ -15,7 +17,7 @@ void loop() {
     mySerial.write(Serial.read());
   }
   if (mySerial.available()) {
-    Serial.write(SerialBT.read());
+    Serial.write(mySerial.read());
   }
   delay(20);
 }
