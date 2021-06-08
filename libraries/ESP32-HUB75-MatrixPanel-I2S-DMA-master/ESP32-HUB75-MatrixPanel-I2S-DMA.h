@@ -29,7 +29,7 @@
 #endif
 
 #ifndef MATRIX_HEIGHT
- #define MATRIX_HEIGHT               32   // CHANGE THIS VALUE ONLY IF USING 64px HIGH panel with E PIN
+ #define MATRIX_HEIGHT               64   // CHANGE THIS VALUE ONLY IF USING 64px HIGH panel with E PIN
 #endif
 
 /* Best to keep these values as is. */
@@ -53,12 +53,12 @@
 #define A_PIN_DEFAULT   23
 #define B_PIN_DEFAULT   19
 #define C_PIN_DEFAULT   5
-#define D_PIN_DEFAULT   17
-#define E_PIN_DEFAULT   -1 // IMPORTANT: Change to a valid pin if using a 64x64px panel.
+#define D_PIN_DEFAULT   33
+#define E_PIN_DEFAULT   18 // IMPORTANT: Change to a valid pin if using a 64x64px panel.
           
 #define LAT_PIN_DEFAULT 4
 #define OE_PIN_DEFAULT  15
-#define CLK_PIN_DEFAULT 16
+#define CLK_PIN_DEFAULT 32
 
 // Interesting Fact: We end up using a uint16_t to send data in parallel to the HUB75... but 
 //                   given we only map to 14 physical output wires/bits, we waste 2 bits.
