@@ -1,15 +1,15 @@
 //I2C device found at address 0x3C  ! 
-
 //I2C device found at address 0x75  ! // IP5306
-
 //I2C device found at address 0x76  !   // BME280
+
+
 
 #include <Wire.h>
 
 
 void setup()
 {
-  Wire.begin(4,13);
+  Wire.begin(18,19);
 
   Serial.begin(115200);
   Serial.println("\nI2C Scanner");
