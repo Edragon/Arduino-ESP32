@@ -1,19 +1,10 @@
-// On ESP8266:
-// At 80MHz runs up 57600ps, and at 160MHz CPU frequency up to 115200bps with only negligible errors.
-// Connect pin 12 to 14.
-
 // 9600 57600 works fine, 115200 not working
 #include <SoftwareSerial.h>
 
-// tested with SIM7020E, 9600bps, 
-
 #define D5 (18)
 #define D6 (19)
-//#define D7 (23)
-//#define D8 (5)
-//#define TX (1)
 
-#define BAUD_RATE 115200
+#define BAUD_RATE 9600
 
 
 // Reminder: the buffer size optimizations here, in particular the isrBufSize that only accommodates
@@ -22,7 +13,7 @@
 SoftwareSerial swSer;
 
 void setup() {
-	Serial.begin(115200);
+	Serial.begin(9600);
 	swSer.begin(BAUD_RATE, SWSERIAL_8N1, D5, D6, false, 95, 11);
 
 	Serial.println("\nSoftware serial test started");
