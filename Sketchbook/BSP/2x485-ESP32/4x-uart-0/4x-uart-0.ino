@@ -21,10 +21,11 @@ void setup() {
 
   //Being serial communication witj Arduino and SIM800
   UART2.begin(9600);
+  UART1.begin(9600);
   SIM.begin(9600);
   
   Serial.println("\r\nSetup Complete!");
-  UART2.println("\r\nSetup UART2 Complete!");
+  UART1.println("\r\nSetup UART2 Complete!");
   delay(1000);
   pinMode(4, OUTPUT);
   
@@ -32,10 +33,10 @@ void setup() {
 
 void loop() {
   digitalWrite(4, HIGH);
-  UART2.println("Setup UART2 Complete! x2");
+  UART1.println("Setup UART2 Complete! x2");
   delay(500);
 
-  UART2.println("Setup UART2 Complete! x2xy");
+  UART1.println("Setup UART2 Complete! x2xy");
   digitalWrite(4, LOW);
   delay(500);
 }
