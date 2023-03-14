@@ -21,12 +21,12 @@
 #define A_PIN 23
 #define B_PIN 19 // Changed from library default
 #define C_PIN 5
-#define D_PIN 33
+#define D_PIN 17
 #define E_PIN -1
 
 #define LAT_PIN 4
 #define OE_PIN 15
-#define CLK_PIN 32
+#define CLK_PIN 16
 
 
 /*--------------------- MATRIX LILBRARY CONFIG -------------------------*/

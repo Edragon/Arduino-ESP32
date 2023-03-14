@@ -8,8 +8,8 @@
 #define UART2_RX 22
 #define UART2_CTRL 20
 
-#define SIM_TX 19
-#define SIM_RX 18
+#define SIM_TX 18
+#define SIM_RX 19
 
 SoftwareSerial UART1(UART1_RX, UART1_TX);
 SoftwareSerial UART2(UART2_RX, UART2_TX);
@@ -42,7 +42,6 @@ void setup() {
   digitalWrite(UART1_CTRL, LOW);
   
 }
-
 
 
 void loop() {
