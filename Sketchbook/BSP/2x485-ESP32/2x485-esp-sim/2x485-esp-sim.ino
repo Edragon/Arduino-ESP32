@@ -17,7 +17,7 @@ SoftwareSerial SIM(SIM_RX, SIM_TX);
 
 void setup() {
 
-  pinMode(UART1_CTRL, OUTPUT);
+  //pinMode(UART1_CTRL, OUTPUT);
   
   //Begin serial comunication with Arduino and Arduino IDE (Serial Monitor)
   Serial.begin(9600);
@@ -27,19 +27,17 @@ void setup() {
   UART2.begin(9600);
   UART1.begin(9600);
   SIM.begin(9600);
-
   delay(500);
-  digitalWrite(UART1_CTRL, HIGH);
+
+  //digitalWrite(UART1_CTRL, HIGH);
   Serial.println("\nUART0 Setup Complete!");
-  
   UART1.println("UART1 Setup Complete!");
   UART2.println("UART2 Setup Complete!");
-  SIM.println("AT\r\n");
-
+  SIM.println("AT");
   delay(500);
   
   // receiver mode 
-  digitalWrite(UART1_CTRL, LOW);
+  //digitalWrite(UART1_CTRL, LOW);
   
 }
 
