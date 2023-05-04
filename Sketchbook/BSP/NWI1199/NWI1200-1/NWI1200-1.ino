@@ -2,6 +2,11 @@
     This sketch shows how to configure different external or internal clock sources for the Ethernet PHY
 */
 
+#define XTAL_EN1 2
+#define XTAL_EN2 15
+#define OP1 4
+#define OP2 5
+
 #include <ETH.h>
 
 /*
@@ -90,38 +95,57 @@ void testClient(const char * host, uint16_t port) {
 }
 
 void setup() {
+  pinMode(XTAL_EN1, OUTPUT);
+  pinMode(XTAL_EN2, OUTPUT);
+  pinMode(OP1, INPUT);
+  pinMode(OP2, INPUT);
+
+  delay(1000);
+  digitalWrite (XTAL_EN1, HIGH);
+  //digitalWrite (XTAL_ctrl2, HIGH);
+  delay(1000);
+  
   Serial.begin(115200);
-  Serial.println("setup start ");
+  Serial.println("ETH setup start ");
 
   WiFi.onEvent(WiFiEvent);
 
   if (ETH.begin(ETH_ADDR, ETH_POWER_PIN, ETH_MDC_PIN, ETH_MDIO_PIN, ETH_TYPE, ETH_CLK_MODE) == true)
   {
-    Serial.println("setup done ");
+    Serial.println("ETH setup done ");
   }
 
 }
 
 
 void loop() {
-//  if (eth_connected) {
-//    testClient("163.com", 80);
-//  }
-  testClient("163.com", 80);
-  Serial.print("ETH status");
-  Serial.print(eth_connected);
   
+  int OP1_status = digitalRead(OP1);
+  int OP2_status = digitalRead(OP2);
+  
+  Serial.print("OP1 status: ");
+  Serial.print(OP1_status);
+  Serial.print("; OP2 status: ");
+  Serial.println(OP2_status);  
+  
+  //  if (eth_connected) {
+  //    testClient("163.com", 80);
+  //  }
+  testClient("163.com", 80);
+  Serial.print("ETH status: ");
+  Serial.print(eth_connected);
+
   Serial.print(", ETH MAC: ");
   Serial.print(ETH.macAddress());
   Serial.print(", IPv4: ");
   Serial.print(ETH.localIP());
-  
+
   if (ETH.fullDuplex()) {
     Serial.print(", FULL_DUPLEX");
   }
   Serial.print(", ");
   Serial.print(ETH.linkSpeed());
   Serial.println("Mbps");
-
+  Serial.println("");
   delay(10000);
 }
