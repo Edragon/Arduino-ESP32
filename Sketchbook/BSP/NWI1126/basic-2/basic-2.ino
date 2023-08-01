@@ -81,12 +81,8 @@ void setup() {
     // example http://192.168.8.103/io/16/val/1
     //         http://192.168.8.103/io/2/val/0
     // send feedback
-
-    
     server.send(200, "text/plain", "io: '" + esp_io + "' and val: '" + esp_val + "'");
-
     digitalWrite(ctrl_io, ctrl_val);
-
   });
 
   server.begin();
@@ -94,32 +90,22 @@ void setup() {
 }
 
 
-
 // the loop function runs over and over again forever
 void loop() {
   server.handleClient();
-
 }
-
-
-
-
 
 
 void test_repeat() {
   Serial.println("Testing LEDs .. ");
   test_LED ();
   test_LED ();
-
   test_LED ();
   test_LED ();
-
   test_LED ();
   test_LED ();
-
   test_LED ();
   test_LED ();
-
   test_LED ();
   test_LED ();
 }
