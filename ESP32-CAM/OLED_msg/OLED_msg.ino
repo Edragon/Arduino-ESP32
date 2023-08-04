@@ -13,6 +13,7 @@ int msg2 = 0;
 void setup() {
   Serial.begin(115200);
   Serial.println();
+  
   pinMode(PIR, INPUT);
 
   display.init();
@@ -29,18 +30,21 @@ void dis() {
 
 void loop() {
 
-  int buttonState = digitalRead(PIR);
-  
-  //int sensorValue = analogRead( BAT_LVL );
-  // msg2 = (BAT_LVL -200) / 1000
-  
-  if (buttonState == HIGH) {
-    msg = "111";
-  } else {
-    msg = "000";
-  }
-  
+  int buttonState = analogRead(PIR);
+  msg = String(buttonState);
+  Serial.println (buttonState);
   dis();
   delay(50);
+  
+//int sensorValue = analogRead( BAT_LVL );
+// msg2 = (BAT_LVL -200) / 1000
+//  
+//  if (buttonState == HIGH) {
+//    msg = "111";
+//  } else {
+//    msg = "000";
+//  }
+//  
+
 
 }
