@@ -8,7 +8,7 @@
 #define SS 15
 
 #define RST 27
-#define DIO0 21
+#define DI0 21
 
 //433E6 for Asia
 //866E6 for Europe
@@ -16,7 +16,7 @@
 #define BAND 433E6
 
 int counter = 0;
-
+  
 void setup() {
   Serial.begin(9600);
   while (!Serial);
@@ -24,7 +24,12 @@ void setup() {
   Serial.println("LoRa Sender");
 
   SPI.begin(SCK, MISO, MOSI, SS);
-  LoRa.setPins(SS, RST, DIO0);
+  LoRa.setSPI(SPI);
+  LoRa.setPins(SS, RST, DI0);
+
+
+  // SPI.begin(SCK, MISO, MOSI, SS);
+  // LoRa.setPins(SS, RST, DIO0);
 
   if (!LoRa.begin(BAND)) {
     Serial.println("Starting LoRa failed!");
