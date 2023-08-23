@@ -3,33 +3,35 @@
 
 // Reminder: the buffer size optimizations here, in particular the isrBufSize that only accommodates
 // a single 8N1 word, are on the basis that any char written to the loopback SoftwareSerial adapter gets read
-// before another write is performed. Block writes with a size greater than 1 would usually fail. 
+// before another write is performed. Block writes with a size greater than 1 would usually fail.
 
-SoftwareSerial swSer;
+#define UART1_RX 23
+#define UART1_TX 22
+
+SoftwareSerial UART1 (UART1_RX, UART1_TX);
+
 
 void setup() {
-	Serial.begin(9600);
-	swSer.begin(9600, SWSERIAL_8N1, 18, 19, false, 95, 11);
-
-	Serial.println("\nSoftware serial test started");
-
-	//for (char ch = ' '; ch <= 'z'; ch++) {
-	//	swSer.write(ch);
-	//}
-	//swSer.println("");
-
-  swSer.println("AT\r\n");
-  
+  Serial.begin(9600);
+  delay(500);
+  //U1.begin(9600, SWSERIAL_8N1, U1R, U1T, false, 95, 11);
+  UART1.begin(9600);
+  delay(500);
+  Serial.println("\nSoftware serial test started");
+  delay(500);
+  UART1.println("AT\r\n");
+  delay(500);
 }
 
 void loop() {
-	while (swSer.available() > 0) {
-		Serial.write(swSer.read());
-		yield();
-	}
-	while (Serial.available() > 0) {
-		swSer.write(Serial.read());
-		yield();
-	}
+  if (UART1.available()) {
+    Serial.write(UART1.read());
+    yield();
+  }
+
+  if (Serial.available()) { // note
+    UART1.write(Serial.read());
+    yield();
+  }
 
 }
