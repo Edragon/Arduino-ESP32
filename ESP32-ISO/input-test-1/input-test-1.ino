@@ -15,7 +15,7 @@ void setup() {
   Serial.begin(9600);
   delay(500);
   Serial.println("\nSoftware serial test started");
-  
+
   pinMode(IN1, INPUT_PULLUP);
   pinMode(IN2, INPUT_PULLUP);
   pinMode(IN3, INPUT_PULLUP);
@@ -24,21 +24,24 @@ void setup() {
   pinMode(debugLED, OUTPUT);
   digitalWrite(debugLED, HIGH);
 
-
-
 }
 
-void loop() {
+void pinCheck(int pin) {
+  int status_IN = digitalRead(pin);
 
-  int status_IN4 = digitalRead(IN4);
-
-  if (status_IN4 == 0) {
+  if (status_IN == 0) {
     digitalWrite(debugLED, LOW);
     Serial.println("000");
-    
+
   } else {
     digitalWrite(debugLED, HIGH);
     Serial.println("111");
   }
+}
 
+void loop() {
+//  pinCheck(IN1);
+//  pinCheck(IN2);
+//  pinCheck(IN3);
+  pinCheck(IN4);
 }
