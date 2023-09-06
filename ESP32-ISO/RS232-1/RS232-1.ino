@@ -1,28 +1,28 @@
 
 #include <SoftwareSerial.h>
-SoftwareSerial swSer;
+SoftwareSerial RS232;
 
 void setup() {
 	Serial.begin(9600);
 
   // sSerial.begin(BAUD_RATE, RX_PIN, TX_PIN, SWSERIAL_8N1, false, 95, 11);
-	swSer.begin(9600, SWSERIAL_8N1, 23, 22, false, 95, 11);
+	RS232.begin(9600, SWSERIAL_8N1, 23, 22, false, 95, 11);
 
  
   delay(500);
   
 	Serial.println("\nSoftware serial test started");
-  swSer.println("AT\r\n");
+  RS232.println("AT\r\n");
   delay(500);
 }
 
 void loop() {
-	while (swSer.available() > 0) {
-		Serial.write(swSer.read());
+	while (RS232.available() > 0) {
+		Serial.write(RS232.read());
 		yield();
 	}
 	while (Serial.available() > 0) {
-		swSer.write(Serial.read());
+		RS232.write(Serial.read());
 		yield();
 	}
 
