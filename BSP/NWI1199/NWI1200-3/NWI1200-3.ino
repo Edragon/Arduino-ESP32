@@ -2,8 +2,8 @@
     This sketch shows how to configure different external or internal clock sources for the Ethernet PHY
 */
 
-#define XTAL_EN1 2
-#define XTAL_EN2 15
+//#define XTAL_EN1 2
+//#define XTAL_EN2 15
 #define OP1 4
 #define OP2 5
 
@@ -22,7 +22,7 @@
 #define ETH_CLK_MODE    ETH_CLOCK_GPIO0_IN
 
 // Pin# of the enable signal for the external crystal oscillator (-1 to disable for internal APLL source)
-#define ETH_POWER_PIN   1
+#define ETH_POWER_PIN   2
 
 // Type of the Ethernet PHY (LAN8720 or TLK110)
 #define ETH_TYPE        ETH_PHY_LAN8720
@@ -95,13 +95,13 @@ void testClient(const char * host, uint16_t port) {
 }
 
 void setup() {
-  pinMode(XTAL_EN1, OUTPUT);
-  pinMode(XTAL_EN2, OUTPUT);
+//  pinMode(XTAL_EN1, OUTPUT);
+//  pinMode(XTAL_EN2, OUTPUT);
   pinMode(OP1, INPUT);
   pinMode(OP2, INPUT);
 
-  delay(1000);
-  digitalWrite (XTAL_EN1, HIGH);
+//  delay(1000);
+//  digitalWrite (XTAL_EN1, HIGH);
   //digitalWrite (XTAL_ctrl2, HIGH);
   delay(1000);
   
