@@ -6,8 +6,8 @@
 
 #define OUT1 27
 #define OUT2 14
-#define OUT3 13
-#define OUT4 15
+#define OUT3 20
+#define OUT4 4
 
 #define debugLED 0
 
