@@ -131,7 +131,10 @@ void loop() {
   //  if (eth_connected) {
   //    testClient("163.com", 80);
   //  }
-  testClient("163.com", 80);
+
+  testClient("baidu.com", 80);
+  // testClient("163.com", 80);
+  
   Serial.print("ETH status: ");
   Serial.print(eth_connected);
 
