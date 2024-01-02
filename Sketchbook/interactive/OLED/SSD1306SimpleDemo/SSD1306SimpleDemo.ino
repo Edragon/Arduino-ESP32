@@ -51,7 +51,7 @@
 
 
 // Initialize the OLED display using Arduino Wire:
-SSD1306Wire display(0x3c, 12, 2);   // ADDRESS, SDA, SCL  -  SDA and SCL usually populate automatically based on your board's pins_arduino.h
+SSD1306Wire display(0x3c, 2, 3);   // ADDRESS, SDA, SCL  -  SDA and SCL usually populate automatically based on your board's pins_arduino.h
 // SSD1306Wire display(0x3c, D3, D5);  // ADDRESS, SDA, SCL  -  If not, they can be specified manually.
 // SSD1306Wire display(0x3c, SDA, SCL, GEOMETRY_128_32);  // ADDRESS, SDA, SCL, OLEDDISPLAY_GEOMETRY  -  Extra param required for 128x32 displays.
 // SH1106 display(0x3c, SDA, SCL);     // ADDRESS, SDA, SCL
