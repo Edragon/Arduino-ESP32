@@ -10,8 +10,8 @@
 #define LED_BUILTIN 2   // Set the GPIO pin where you connected your test LED or comment this line out if your dev board has a built-in LED
 
 // Set these to your desired credentials.
-const char *ssid = "yourAP";
-const char *password = "yourPassword";
+const char *ssid = "electrodragon";
+const char *password = "electrodragon";
 
 WiFiServer server(80);
 
