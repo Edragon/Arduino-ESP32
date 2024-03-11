@@ -12,36 +12,34 @@
 #define SW1_Status 13
 
 #define SW2_CTRL 19 // not solder 
-#define SW2_Status 18 
+#define SW2_Status 18
 
-#define PROG_LED 15
+#define PROG_LED 5
 #define PWR_ADC 33
 
 #define BAUD_RATE 9600
 
-
-SoftwareSerial RS485;
+SoftwareSerial sCAN;
+// SoftwareSerial RS485;
 
 void setup() {
   Serial.begin(9600);
- 
-  RS485.begin(BAUD_RATE, SWSERIAL_8N1, RS485_RX, RS485_TX, false, 95, 11);
+  sCAN.begin(BAUD_RATE, SWSERIAL_8N1, CAN_RX, CAN_TX, false, 95, 11);
+  pinMode(15, OUTPUT);
 
+  Serial.println(" receiver mode CAN B /r/n");
+  digitalWrite(15, HIGH);
   delay(1000);
-  Serial.println("\nSoftware serial test started");
- 
-  delay(1000);
-  RS485.println("AT\r\n");
-  
+
 }
 
 void loop() {
-  while (RS485.available() > 0) {
-    Serial.write(RS485.read());
+    while (sCAN.available() > 0) {
+    Serial.write(sCAN.read());
     yield();
   }
   while (Serial.available() > 0) {
-    RS485.write(Serial.read());
+    sCAN.write(Serial.read());
     yield();
   }
 
