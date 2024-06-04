@@ -23,17 +23,33 @@
 SoftwareSerial RS485;
 
 void setup() {
+  pinMode(15, OUTPUT);
+
   Serial.begin(9600);
  
   RS485.begin(BAUD_RATE, SWSERIAL_8N1, RS485_RX, RS485_TX, false, 95, 11);
 
-  delay(1000);
-  Serial.println("\nSoftware serial test started");
+  delay(200);
+  digitalWrite(15, HIGH);
+  Serial.println("\nSoftware serial test started 1");
  
-  delay(1000);
-  RS485.println("AT\r\n");
+  delay(200);
+  digitalWrite(15, LOW);
+  Serial.println("\nSoftware serial test started 2");
+
+  delay(200);
+  digitalWrite(15, HIGH);
+  Serial.println("\nSoftware serial test started 3");
+ 
+  delay(200);
+  digitalWrite(15, LOW);
+  Serial.println("\nSoftware serial test started 4");
+
+  // delay(1000);
+  // RS485.println("AT\r\n");
   
 }
+
 
 void loop() {
   while (RS485.available() > 0) {
