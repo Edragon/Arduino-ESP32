@@ -25,10 +25,10 @@ SoftwareSerial sCAN;
 void setup() {
   Serial.begin(9600);
   sCAN.begin(BAUD_RATE, SWSERIAL_8N1, CAN_RX, CAN_TX, false, 95, 11);
-  pinMode(15, OUTPUT);
+  pinMode(PROG_LED, OUTPUT);
 
   Serial.println("keep sending mode CAN A /r/n");
-  digitalWrite(15, HIGH);
+  digitalWrite(PROG_LED, HIGH);
   delay(1000);
 
 }

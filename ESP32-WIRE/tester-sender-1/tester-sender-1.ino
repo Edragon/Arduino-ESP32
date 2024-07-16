@@ -33,22 +33,22 @@ void setup()
 
 void loop()
 {
-  delay(400);
+  delay(200);
   digitalWrite(PROG_LED, HIGH);
   RS485.println("\nSoftware serial test started 1");
   sCAN.println("\nSoftware serial test started 1");
 
-  delay(400);
+  delay(200);
   digitalWrite(PROG_LED, LOW);
   RS485.println("\nSoftware serial test started 2");
   sCAN.println("\nSoftware serial test started 2");
   
-  delay(400);
+  delay(200);
   digitalWrite(PROG_LED, HIGH);
   RS485.println("\nSoftware serial test started 3");
   sCAN.println("\nSoftware serial test started 3");
   
-  delay(400);
+  delay(200);
   digitalWrite(PROG_LED, LOW);
   RS485.println("\nSoftware serial test started 4");
   sCAN.println("\nSoftware serial test started 4");
