@@ -36,7 +36,7 @@ void setup() {
 
   tft.begin();
 
-  if (!SD.begin()) {
+  if (!SD.begin(5, tft.getSPIinstance())) {
     Serial.println("Card Mount Failed");
     return;
   }
@@ -118,8 +118,8 @@ void drawSdJpeg(const char *filename, int xpos, int ypos) {
   Serial.println("===========================");
 
   // Use one of the following methods to initialise the decoder:
-  boolean decoded = JpegDec.decodeSdFile(jpegFile);  // Pass the SD file handle to the decoder,
-  //boolean decoded = JpegDec.decodeSdFile(filename);  // or pass the filename (String or character array)
+  bool decoded = JpegDec.decodeSdFile(jpegFile);  // Pass the SD file handle to the decoder,
+  //bool decoded = JpegDec.decodeSdFile(filename);  // or pass the filename (String or character array)
 
   if (decoded) {
     // print information about the image to the serial port
@@ -153,8 +153,8 @@ void jpegRender(int xpos, int ypos) {
   // Jpeg images are draw as a set of image block (tiles) called Minimum Coding Units (MCUs)
   // Typically these MCUs are 16x16 pixel blocks
   // Determine the width and height of the right and bottom edge image blocks
-  uint32_t min_w = min(mcu_w, max_x % mcu_w);
-  uint32_t min_h = min(mcu_h, max_y % mcu_h);
+  uint32_t min_w = jpg_min(mcu_w, max_x % mcu_w);
+  uint32_t min_h = jpg_min(mcu_h, max_y % mcu_h);
 
   // save the current image block size
   uint32_t win_w = mcu_w;
@@ -249,7 +249,7 @@ void jpegInfo() {
 // Show the execution time (optional)
 //####################################################################################################
 // WARNING: for UNO/AVR legacy reasons printing text to the screen with the Mega might not work for
-// sketch sizes greater than ~70KBytes because 16 bit address pointers are used in some libraries.
+// sketch sizes greater than ~70KBytes because 16-bit address pointers are used in some libraries.
 
 // The Due will work fine with the HX8357_Due library.
 
