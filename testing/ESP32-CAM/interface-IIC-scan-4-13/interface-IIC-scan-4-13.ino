@@ -1,4 +1,4 @@
-//I2C device found at address 0x3C  ! 
+//I2C device found at address 0x3C  ! // OLED
 
 //I2C device found at address 0x75  ! // IP5306
 
