@@ -48,7 +48,7 @@ void setup() {
   Serial.println("I2S simple tone");
 
   //i2s.setPins(I2S_SCK, I2S_WS, I2S_SDOUT, I2S_SDIN, I2S_MCLK);
-  i2s.setPins(14, 2, 4, -1, -1);
+  //i2s.setPins(14, 2, 4, -1, -1);
   
   // start I2S at the sample rate with 16-bits per sample
   if (!i2s.begin(mode, sampleRate, bps, slot)) {
