@@ -47,17 +47,20 @@ class SSD1306Spi : public OLEDDisplay {
       uint8_t             _cs;
 
   public:
-    SSD1306Spi(uint8_t _rst, uint8_t _dc, uint8_t _cs, OLEDDISPLAY_GEOMETRY g = GEOMETRY_128_64) {
+    /* pass _cs as -1 to indicate "do not use CS pin", for cases where it is hard wired low */
+    SSD1306Spi(uint8_t rst, uint8_t dc, uint8_t cs, OLEDDISPLAY_GEOMETRY g = GEOMETRY_128_64) {
         setGeometry(g);
 
-      this->_rst = _rst;
-      this->_dc  = _dc;
-      this->_cs  = _cs;
+      this->_rst = rst;
+      this->_dc  = dc;
+      this->_cs  = cs;
     }
 
     bool connect(){
       pinMode(_dc, OUTPUT);
-      pinMode(_cs, OUTPUT);
+      if (_cs != (uint8_t) -1) {
+        pinMode(_cs, OUTPUT);
+      }  
       pinMode(_rst, OUTPUT);
 
       SPI.begin ();
@@ -111,16 +114,16 @@ class SSD1306Spi : public OLEDDisplay {
        sendCommand(minBoundY);
        sendCommand(maxBoundY);
 
-       digitalWrite(_cs, HIGH);
+       set_CS(HIGH);
        digitalWrite(_dc, HIGH);   // data mode
-       digitalWrite(_cs, LOW);
+       set_CS(LOW);
        for (y = minBoundY; y <= maxBoundY; y++) {
          for (x = minBoundX; x <= maxBoundX; x++) {
            SPI.transfer(buffer[x + y * displayWidth]);
          }
          yield();
        }
-       digitalWrite(_cs, HIGH);
+       set_CS(HIGH);
      #else
        // No double buffering
        sendCommand(COLUMNADDR);
@@ -130,20 +133,20 @@ class SSD1306Spi : public OLEDDisplay {
        sendCommand(PAGEADDR);
        sendCommand(0x0);
 
-       if (geometry == GEOMETRY_128_64) {
+       if (geometry == GEOMETRY_128_64 || geometry == GEOMETRY_64_48 || geometry == GEOMETRY_64_32 ) {
          sendCommand(0x7);
        } else if (geometry == GEOMETRY_128_32) {
          sendCommand(0x3);
        }
 
-        digitalWrite(_cs, HIGH);
+        set_CS(HIGH);
         digitalWrite(_dc, HIGH);   // data mode
-        digitalWrite(_cs, LOW);
+        set_CS(LOW);
         for (uint16_t i=0; i<displayBufferSize; i++) {
           SPI.transfer(buffer[i]);
           yield();
         }
-        digitalWrite(_cs, HIGH);
+        set_CS(HIGH);
      #endif
     }
 
@@ -151,12 +154,17 @@ class SSD1306Spi : public OLEDDisplay {
 	int getBufferOffset(void) {
 		return 0;
 	}
+    inline void set_CS(bool level) {
+      if (_cs != (uint8_t) -1) {
+        digitalWrite(_cs, level);
+      }
+    };
     inline void sendCommand(uint8_t com) __attribute__((always_inline)){
-      digitalWrite(_cs, HIGH);
+      set_CS(HIGH);
       digitalWrite(_dc, LOW);
-      digitalWrite(_cs, LOW);
+      set_CS(LOW);
       SPI.transfer(com);
-      digitalWrite(_cs, HIGH);
+      set_CS(HIGH);
     }
 };
 
