@@ -17,7 +17,7 @@
 #include "Arduino.h"
 #include "Wire.h"
 
-#define BMP280_DEFAULT_ADDRESS 0x77
+#define BMP280_DEFAULT_ADDRESS 0x76
 
 class BMP280
 {
@@ -213,6 +213,8 @@ public:
    * @param eT One enum of eConfigTStandby_t
    */
   void setConfigTStandby(eConfigTStandby_t eT);
+
+  //int32_t   getTemperatureRaw();
 
 protected:
   void    getCalibrate();

@@ -1,0 +1,54 @@
+#######################################
+# Syntax Coloring Map For ExampleLibrary
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+BMP180MI	KEYWORD1
+BMP180I2C	KEYWORD1
+BMP180TwoWire	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+begin	KEYWORD2
+BMP180MI	KEYWORD2
+measurePressure	KEYWORD2
+measureTemperature	KEYWORD2
+hasValue	KEYWORD2
+getPressure	KEYWORD2
+getTemperature	KEYWORD2
+readPressure	KEYWORD2
+readCalibrationParameters	KEYWORD2
+resetToDefaults	KEYWORD2
+getSamplingMode	KEYWORD2
+setSamplingMode	KEYWORD2
+
+#######################################
+# Instances (KEYWORD2)
+#######################################
+
+#######################################
+# Constants (LITERAL1)
+
+MODE_ULP LITERAL1 
+MODE_STD LITERAL1 
+MODE_HR LITERAL1 
+MODE_UHR LITERAL1 
+BMP180_ID LITERAL1 
+cp_AC1_ LITERAL1 
+cp_AC2_ LITERAL1 
+cp_AC3_ LITERAL1 
+cp_AC4_ LITERAL1 
+cp_AC5_ LITERAL1 
+cp_AC6_ LITERAL1 
+cp_B1_ LITERAL1 
+cp_B2_ LITERAL1 
+cp_MB_ LITERAL1 
+cp_MC_ LITERAL1 
+cp_MD_ LITERAL1 
+
+#######################################
