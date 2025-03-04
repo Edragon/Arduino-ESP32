@@ -29,7 +29,9 @@
 #define ETH_TYPE        ETH_PHY_LAN8720
 
 // I²C-address of Ethernet PHY (0 or 1 for LAN8720, 31 for TLK110)
-#define ETH_ADDR        1
+#define ETH_PHY_ADDR        1
+
+// eth_phy_type_t myPhy = static_cast<eth_phy_type_t>(1);  // Ensure it’s a valid enum
 
 // Pin# of the I²C clock signal for the Ethernet PHY
 #define ETH_MDC_PIN     23
@@ -42,15 +44,15 @@ static bool eth_connected = false;
 
 void WiFiEvent(WiFiEvent_t event) {
   switch (event) {
-    case SYSTEM_EVENT_ETH_START:
+    case ARDUINO_EVENT_ETH_START:
       Serial.println("ETH Started");
       //set eth hostname here
       ETH.setHostname("esp32-ethernet");
       break;
-    case SYSTEM_EVENT_ETH_CONNECTED:
+    case ARDUINO_EVENT_ETH_CONNECTED:
       Serial.println("ETH Connected");
       break;
-    case SYSTEM_EVENT_ETH_GOT_IP:
+    case ARDUINO_EVENT_ETH_GOT_IP:
       Serial.print("ETH MAC: ");
       Serial.print(ETH.macAddress());
       Serial.print(", IPv4: ");
@@ -63,11 +65,11 @@ void WiFiEvent(WiFiEvent_t event) {
       Serial.println("Mbps");
       eth_connected = true;
       break;
-    case SYSTEM_EVENT_ETH_DISCONNECTED:
+    case ARDUINO_EVENT_ETH_DISCONNECTED:
       Serial.println("ETH Disconnected");
       eth_connected = false;
       break;
-    case SYSTEM_EVENT_ETH_STOP:
+    case ARDUINO_EVENT_ETH_STOP:
       Serial.println("ETH Stopped");
       eth_connected = false;
       break;
@@ -111,7 +113,7 @@ void setup() {
 
   WiFi.onEvent(WiFiEvent);
 
-  if (ETH.begin(ETH_ADDR, ETH_POWER_PIN, ETH_MDC_PIN, ETH_MDIO_PIN, ETH_TYPE, ETH_CLK_MODE) == true)
+  if (ETH.begin(ETH_PHY_ADDR, ETH_POWER_PIN, ETH_MDC_PIN, ETH_MDIO_PIN, ETH_TYPE, ETH_CLK_MODE) == true)
   {
     Serial.println("ETH setup done ");
   }
