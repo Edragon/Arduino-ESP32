@@ -47,7 +47,7 @@ void setup() {
 
 void loop() {
 
-  delay(1000);
+  delay(100);
 
   //start a measurement
   if (!bmx280.measure())
@@ -70,13 +70,13 @@ void loop() {
   int ValuePIR = digitalRead(PIR);
 
 
-  Serial.print("  Pressure (64 bit): "); Serial.print(temp);
-  Serial.print("  Temperature: "); Serial.print(pres);
+  Serial.print("  Pressure (64 bit): "); Serial.print(pres);
+  Serial.print("  Temperature: "); Serial.print(temp);
   Serial.print("PIR: "); Serial.println(ValuePIR);
 
   if (ValuePIR == HIGH) {
     digitalWrite(flash, HIGH);
-    delay(500); // make a photo for 2 seconds freeze
+    delay(20); // make a photo for 2 seconds freeze
   } else {
     // turn LED off:
     digitalWrite(flash, LOW);
