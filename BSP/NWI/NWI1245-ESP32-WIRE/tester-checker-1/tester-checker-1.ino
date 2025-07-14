@@ -29,6 +29,7 @@ void setup()
   RS485.begin(BAUD_RATE, SWSERIAL_8N1, RS485_RX, RS485_TX, false, 95, 11);
   sCAN.begin(BAUD_RATE, SWSERIAL_8N1, CAN_RX, CAN_TX, false, 95, 11);
 
+  Serial.println("boot OK");
 }
 
 //void loop()
