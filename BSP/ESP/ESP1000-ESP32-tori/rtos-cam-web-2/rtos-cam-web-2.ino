@@ -25,15 +25,25 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
-#include <BME280I2C.h>
+#include "SSD1306Wire.h"
+#include <BMx280I2C.h>
 
 // ===========================
 // WiFi credentials
 // ===========================
 const char* ssid = "111";
 const char* password = "electrodragon";
+
+// ===========================
+// OLED Display Configuration
+// ===========================
+// SDA = GPIO 15, SCL = GPIO 13 (using same pins as reference code)
+SSD1306Wire display(0x3c, 15, 13);
+
+// ===========================
+// BMP280 Sensor Configuration
+// ===========================
+BMx280I2C bmx280(0x76);
 
 // ===========================
 // Simple ESP32-CAM Image Capture
@@ -62,21 +72,6 @@ const char* password = "electrodragon";
 #define HREF_GPIO_NUM     23
 #define PCLK_GPIO_NUM     22
 
-// I2C configuration
-#define I2C_SDA           15
-#define I2C_SCL           13
-#define SSD1306_ADDRESS   0x3C
-#define BME280_ADDR       0x76
-
-// OLED display configuration
-#define SCREEN_WIDTH      128
-#define SCREEN_HEIGHT     64
-#define OLED_RESET        -1  // Reset pin not used
-
-// Global objects
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
-BME280I2C bme; // Use I2C interface - BME280I2C library
-
 WebServer server(80);
 bool captureRequested = false; // Flag for manual capture requests
 bool gpioTriggered = false;    // Flag for GPIO3 trigger
@@ -84,22 +79,24 @@ bool gpioTriggered = false;    // Flag for GPIO3 trigger
 // GPIO pin for external trigger
 #define TRIGGER_GPIO_PIN 3
 
+// LED pins for capture indication
+#define LED1_GPIO_PIN 33
+#define LED2_GPIO_PIN 4
+
 // FreeRTOS handles
 TaskHandle_t cameraTaskHandle = NULL;
 TaskHandle_t webServerTaskHandle = NULL;
-TaskHandle_t sensorDisplayTaskHandle = NULL;
+TaskHandle_t displayTaskHandle = NULL;
+TaskHandle_t sensorTaskHandle = NULL;
 SemaphoreHandle_t fileMutex = NULL;
-SemaphoreHandle_t i2cMutex = NULL;
-
-// Sensor data variables
-float temperature = 0.0;
-float pressure = 0.0;
-float altitude = 0.0;
-float humidity = 0.0;
-bool sensorDataValid = false;
 
 unsigned long lastCaptureTime = 0;
 const long captureInterval = 60000; // 60 seconds
+
+// BMP280 sensor readings (shared between tasks)
+float currentTemperature = 0.0;
+double currentPressure = 0.0;
+bool sensorDataValid = false;
 
 // GPIO interrupt handler
 void IRAM_ATTR gpio3InterruptHandler() {
@@ -109,8 +106,23 @@ void IRAM_ATTR gpio3InterruptHandler() {
   portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
+void blinkCaptureLEDs() {
+  // Blink both LEDs twice quickly
+  for (int i = 0; i < 2; i++) {
+    digitalWrite(LED1_GPIO_PIN, HIGH);
+    digitalWrite(LED2_GPIO_PIN, HIGH);
+    delay(100); // LED on for 100ms
+    digitalWrite(LED1_GPIO_PIN, LOW);
+    digitalWrite(LED2_GPIO_PIN, LOW);
+    delay(100); // LED off for 100ms
+  }
+}
+
 void captureAndSaveImage() {
   Serial.println("\nCapturing image...");
+  
+  // Trigger LED blink to indicate capture
+  blinkCaptureLEDs();
   
   // Take mutex to protect file operations
   if (xSemaphoreTake(fileMutex, pdMS_TO_TICKS(5000)) == pdTRUE) {
@@ -168,16 +180,17 @@ void captureAndSaveImage() {
 void handleRoot() {
   // Take mutex to protect file operations
   if (xSemaphoreTake(fileMutex, pdMS_TO_TICKS(2000)) == pdTRUE) {
-    String html = "<html><head><title>ESP32-CAM LittleFS Images</title>";
+    String html = "<html><head><title>ESP32-CAM + BMP280 Sensor</title>";
     html += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
     html += "<style>body{font-family:sans-serif; background-color:#222; color: #fff; padding:20px;} ";
     html += "table{border-collapse:collapse; width:100%;} th,td{padding:8px;text-align:left;border-bottom:1px solid #444;} ";
     html += "tr:hover{background-color:#333;} a{text-decoration:none;color:#00abff;} ";
     html += ".button{background-color:#00abff; color:white; padding:10px 20px; text-align:center; display:inline-block; font-size:16px; margin:10px 5px; border:none; cursor:pointer; border-radius:5px;} ";
     html += "img{max-width:200px; border:1px solid #666;}</style>";
-    html += "</head><body><h1>ESP32-CAM LittleFS Images (FreeRTOS)</h1>";
+    html += "</head><body><h1>ESP32-CAM + BMP280 Sensor (FreeRTOS)</h1>";
     html += "<p><a href='/capture' class='button'>Take New Picture</a> ";
     html += "<a href='/' class='button'>Refresh</a></p>";
+    html += "<h2>Captured Images</h2>";
     html += "<table><tr><th>Image</th><th>File</th><th>Size</th><th>Actions</th></tr>";
 
     File root = LittleFS.open("/");
@@ -206,6 +219,19 @@ void handleRoot() {
     }
     
     html += "</table>";
+    
+    // Add BMP280 sensor data section
+    html += "<h2>Sensor Data (BMP280)</h2>";
+    html += "<div style='background-color:#333; padding:15px; border-radius:5px; margin:10px 0;'>";
+    if (sensorDataValid) {
+      html += "<p><strong>Temperature:</strong> " + String(currentTemperature, 1) + " °C</p>";
+      html += "<p><strong>Pressure:</strong> " + String(currentPressure, 0) + " Pa</p>";
+      html += "<p><strong>Pressure:</strong> " + String(currentPressure / 100.0, 2) + " hPa</p>";
+    } else {
+      html += "<p><strong>Sensor Status:</strong> Reading... or Not Connected</p>";
+    }
+    html += "</div>";
+    
     html += "<p>Total images: " + String(fileCount) + "</p>";
     html += "<p>Free heap: " + String(ESP.getFreeHeap()) + " bytes</p>";
     html += "</body></html>";
@@ -251,6 +277,76 @@ void handleCapture() {
 }
 
 // FreeRTOS Task Functions
+void displayTask(void *pvParameters) {
+  // Initialize display
+  display.init();
+  delay(50);
+  display.clear();
+  display.display();
+  
+  for(;;) {
+    display.clear();
+    display.setTextAlignment(TEXT_ALIGN_LEFT);
+    
+    // Display title
+    display.setFont(ArialMT_Plain_10);
+    display.drawString(0, 0, "ESP32-CAM + BMP280");
+    
+    // Display BMP280 sensor data
+    if (sensorDataValid) {
+      display.setFont(ArialMT_Plain_10);
+      display.drawString(0, 12, "Temp: " + String(currentTemperature, 1) + " C");
+      display.drawString(0, 22, "Press: " + String(currentPressure, 0) + " Pa");
+    } else {
+      display.drawString(0, 12, "Sensor: Reading...");
+    }
+    
+    // Display WiFi status (compact)
+    if (WiFi.status() == WL_CONNECTED) {
+      display.drawString(0, 34, "WiFi: " + WiFi.localIP().toString());
+    } else {
+      display.drawString(0, 34, "WiFi: Disconnected");
+    }
+    
+    // Display memory info
+    display.drawString(0, 46, "Heap: " + String(ESP.getFreeHeap()));
+    
+    // Display capture count (if files exist)
+    display.drawString(0, 56, "Images captured");
+    
+    display.display();
+    
+    // Update every 2 seconds
+    vTaskDelay(pdMS_TO_TICKS(2000));
+  }
+}
+
+void sensorTask(void *pvParameters) {
+  for(;;) {
+    // Start a measurement
+    if (bmx280.measure()) {
+      // Wait for the measurement to finish
+      while (!bmx280.hasValue()) {
+        vTaskDelay(pdMS_TO_TICKS(100));
+      }
+      
+      // Read sensor values
+      currentTemperature = bmx280.getTemperature();
+      currentPressure = bmx280.getPressure64();
+      sensorDataValid = true;
+      
+      Serial.printf("BMP280 - Temp: %.1f°C, Pressure: %.0f Pa\n", 
+                   currentTemperature, currentPressure);
+    } else {
+      Serial.println("BMP280 measurement failed");
+      sensorDataValid = false;
+    }
+    
+    // Read sensor every 5 seconds
+    vTaskDelay(pdMS_TO_TICKS(5000));
+  }
+}
+
 void cameraTask(void *pvParameters) {
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = pdMS_TO_TICKS(captureInterval);
@@ -292,88 +388,14 @@ void webServerTask(void *pvParameters) {
   }
 }
 
-// Sensor and Display Task
-void sensorDisplayTask(void *pvParameters) {
-  TickType_t xLastWakeTime = xTaskGetTickCount();
-  const TickType_t xFrequency = pdMS_TO_TICKS(2000); // Update every 2 seconds
-  
-  for(;;) {
-    // Take I2C mutex to prevent conflicts
-    if (xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(1000)) == pdTRUE) {
-      // Try to read sensor data using BME280I2C library
-      sensorDataValid = false; // Reset flag
-      
-      // Check if sensor is available before trying to read
-      if (bme.begin(BME280_ADDR) || bme.begin(0x77)) {
-        BME280::TempUnit tempUnit(BME280::TempUnit_Celsius);
-        BME280::PresUnit presUnit(BME280::PresUnit_Pa);
-        
-        bme.read(pressure, temperature, humidity, tempUnit, presUnit);
-        pressure = pressure / 100.0F; // Convert Pa to hPa
-        altitude = 44330.0 * (1.0 - pow(pressure / 1013.25, 0.1903)); // Calculate altitude
-        sensorDataValid = true;
-      }
-      
-      // Update display
-      display.clearDisplay();
-      display.setTextSize(1);
-      display.setTextColor(SSD1306_WHITE);
-      display.setCursor(0, 0);
-      
-      // Display title
-      display.println("ESP32-CAM Monitor");
-      display.println("================");
-      
-      if (sensorDataValid) {
-        display.print("Temp: ");
-        display.print(temperature, 1);
-        display.println(" C");
-        
-        display.print("Hum: ");
-        display.print(humidity, 1);
-        display.println(" %");
-        
-        display.print("Press: ");
-        display.print(pressure, 1);
-        display.println(" hPa");
-        
-        display.print("Alt: ");
-        display.print(altitude, 1);
-        display.println(" m");
-      } else {
-        display.println("BME280: Not Found");
-        display.println("Check I2C wiring");
-      }
-      
-      display.println();
-      display.print("Free Heap: ");
-      display.print(ESP.getFreeHeap());
-      display.println(" B");
-      
-      display.print("WiFi: ");
-      display.println(WiFi.status() == WL_CONNECTED ? "OK" : "NO");
-      
-      display.display();
-      xSemaphoreGive(i2cMutex);
-    }
-    
-    // Wait for next update cycle
-    vTaskDelayUntil(&xLastWakeTime, xFrequency);
-  }
-}
-
 void setup() {
-  delay(3000); // Longer delay for stability
+  delay(2000); // Increased delay for stability
   Serial.begin(115200);
   Serial.println("ESP32-CAM FreeRTOS Image Capture to LittleFS");
   
   // Print initial memory info
-  Serial.printf("Initial free heap: %lu bytes\n", ESP.getFreeHeap());
+  Serial.printf("Initial free heap: %u bytes\n", ESP.getFreeHeap());
   Serial.printf("PSRAM available: %s\n", psramFound() ? "Yes" : "No");
-  
-  // Reduce CPU frequency for stability during setup
-  setCpuFrequencyMhz(160); // Reduce from default 240MHz
-  Serial.println("CPU frequency reduced to 160MHz for stability");
   
   // Create file mutex
   fileMutex = xSemaphoreCreateMutex();
@@ -382,52 +404,26 @@ void setup() {
     return;
   }
   
-  // Create I2C mutex
-  i2cMutex = xSemaphoreCreateMutex();
-  if (i2cMutex == NULL) {
-    Serial.println("Failed to create I2C mutex");
-    return;
-  }
+  // Initialize I2C for OLED display (SDA=15, SCL=13)
+  Wire.begin(15, 13);
+  Serial.println("I2C initialized for OLED display");
   
-  // Initialize BME280 sensor
-  Wire.begin(I2C_SDA, I2C_SCL);
-  Wire.setClock(100000); // 100kHz for compatibility
-  Serial.println("I2C initialized");
-  
-  // Try to detect BME280 sensor (non-blocking)
-  if (!bme.begin(BME280_ADDR)) {
-    Serial.println("BME280 sensor not found at 0x76, trying 0x77...");
-    if (!bme.begin(0x77)) {
-      Serial.println("Could not find BME280 sensor, continuing without sensor");
-      // Continue without sensor - don't block startup
+  // Initialize BMP280 sensor
+  if (!bmx280.begin()) {
+    Serial.println("BMP280 sensor initialization failed! Check connections.");
+    // Continue without sensor (sensorDataValid will remain false)
+  } else {
+    if (bmx280.isBME280()) {
+      Serial.println("BME280 sensor detected");
     } else {
-      Serial.println("Found BME280 sensor at address 0x77!");
+      Serial.println("BMP280 sensor detected");
     }
-  } else {
-    switch(bme.chipModel()) {
-      case BME280::ChipModel_BME280:
-        Serial.println("Found BME280 sensor at 0x76! Success.");
-        break;
-      case BME280::ChipModel_BMP280:
-        Serial.println("Found BMP280 sensor at 0x76! No Humidity available.");
-        break;
-      default:
-        Serial.println("Found UNKNOWN sensor! Error!");
-    }
-  }
-  
-  // Initialize OLED display after I2C is set up
-  if (!display.begin(SSD1306_SWITCHCAPVCC, SSD1306_ADDRESS)) {
-    Serial.println("SSD1306 allocation failed or not found");
-    // Continue without display
-  } else {
-    Serial.println("OLED display initialized");
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0, 0);
-    display.println("ESP32-CAM Starting...");
-    display.display();
+    
+    // Reset sensor to default parameters and configure
+    bmx280.resetToDefaults();
+    bmx280.writeOversamplingPressure(BMx280MI::OSRS_P_x16);
+    bmx280.writeOversamplingTemperature(BMx280MI::OSRS_T_x16);
+    Serial.println("BMP280 sensor configured successfully");
   }
   
   // Initialize LittleFS
@@ -484,51 +480,39 @@ void setup() {
     return;
   }
   Serial.println("Camera initialized successfully");
+  // Get camera sensor and adjust settings
+  sensor_t * s = esp_camera_sensor_get();
+  if (s->id.PID == OV3660_PID) {
+    s->set_vflip(s, 1);        // Flip vertically
+    s->set_brightness(s, 1);   // Increase brightness
+    s->set_saturation(s, -2);  // Decrease saturation
+  }
   Serial.println("Setup complete. Camera ready for capture.");
   
   // Setup GPIO3 as input with pull-down for external trigger
   pinMode(TRIGGER_GPIO_PIN, INPUT_PULLDOWN);
-  delay(100); // Small delay before setting up interrupt
-  
-  // Check if GPIO ISR service is already installed
-  esp_err_t isr_result = gpio_install_isr_service(0);
-  if (isr_result == ESP_ERR_INVALID_STATE) {
-    Serial.println("GPIO ISR service already installed - continuing");
-  } else if (isr_result == ESP_OK) {
-    Serial.println("GPIO ISR service installed successfully");
-  } else {
-    Serial.printf("Failed to install GPIO ISR service: 0x%x\n", isr_result);
-  }
-  
+  // Small delay before setting up interrupt
+  delay(100);
   attachInterrupt(digitalPinToInterrupt(TRIGGER_GPIO_PIN), gpio3InterruptHandler, RISING);
   Serial.println("GPIO3 interrupt configured for rising edge trigger");
   
-  // Ensure sufficient free memory before WiFi operations
-  Serial.printf("Free heap before WiFi: %lu bytes\n", ESP.getFreeHeap());
+  // Setup LED pins for capture indication
+  pinMode(LED1_GPIO_PIN, OUTPUT);
+  pinMode(LED2_GPIO_PIN, OUTPUT);
+  digitalWrite(LED1_GPIO_PIN, LOW); // Start with LEDs off
+  digitalWrite(LED2_GPIO_PIN, LOW);
+  Serial.println("LED pins (GPIO33, GPIO4) configured for capture indication");
   
-  // Connect to WiFi with more conservative approach
+  // Connect to WiFi with error handling
   Serial.print("Connecting to WiFi");
   WiFi.mode(WIFI_STA);
-  WiFi.setTxPower(WIFI_POWER_8_5dBm); // Reduce WiFi power for stability
-  
-  // Clear any previous WiFi configuration
-  WiFi.disconnect(true);
-  delay(1000);
-  
   WiFi.begin(ssid, password);
   
   int wifi_retry = 0;
-  while (WiFi.status() != WL_CONNECTED && wifi_retry < 15) { // Reduced retries
-    delay(1000); // Longer delay between retries
+  while (WiFi.status() != WL_CONNECTED && wifi_retry < 20) {
+    delay(500);
     Serial.print(".");
     wifi_retry++;
-    
-    // Yield to other tasks and check memory
-    yield();
-    if (ESP.getFreeHeap() < 30000) {
-      Serial.println("\nLow memory detected, aborting WiFi connection");
-      break;
-    }
   }
   
   if (WiFi.status() == WL_CONNECTED) {
@@ -550,11 +534,34 @@ void setup() {
     Serial.println("WiFi not connected - skipping web server setup");
   }
   
-  // Create FreeRTOS tasks with very conservative stack sizes for no PSRAM
+  // Create FreeRTOS tasks with conservative stack sizes for no PSRAM
+  
+  // Create display task first
+  xTaskCreatePinnedToCore(
+    displayTask,          // Task function
+    "DisplayTask",        // Name of task
+    4096,                 // Stack size (bytes) - smaller for display
+    NULL,                 // Parameter to pass
+    1,                    // Task priority (lower priority)
+    &displayTaskHandle,   // Task handle
+    0                     // Core 0
+  );
+  
+  // Create sensor task
+  xTaskCreatePinnedToCore(
+    sensorTask,           // Task function
+    "SensorTask",         // Name of task
+    3072,                 // Stack size (bytes) - small for sensor reading
+    NULL,                 // Parameter to pass
+    1,                    // Task priority (same as display)
+    &sensorTaskHandle,    // Task handle
+    0                     // Core 0
+  );
+  
   xTaskCreatePinnedToCore(
     cameraTask,           // Task function
     "CameraTask",         // Name of task
-    8192,                 // Stack size (bytes) - further reduced for no PSRAM
+    10240,                // Stack size (bytes) - reduced for no PSRAM
     NULL,                 // Parameter to pass
     2,                    // Task priority (higher number = higher priority)
     &cameraTaskHandle,    // Task handle
@@ -566,29 +573,17 @@ void setup() {
     xTaskCreatePinnedToCore(
       webServerTask,        // Task function
       "WebServerTask",      // Name of task
-      4096,                 // Stack size (bytes) - further reduced for no PSRAM
+      6144,                 // Stack size (bytes) - reduced for no PSRAM
       NULL,                 // Parameter to pass
       1,                    // Task priority
       &webServerTaskHandle, // Task handle
       0                     // Core 0
     );
-    Serial.println("FreeRTOS tasks created successfully (including web server)");
+    Serial.println("FreeRTOS tasks created successfully (including web server, display, and sensor)");
   } else {
-    Serial.println("FreeRTOS camera task created successfully (web server disabled)");
+    Serial.println("FreeRTOS camera, display, and sensor tasks created successfully (web server disabled)");
   }
-  
-  // Create sensor and display task
-  xTaskCreatePinnedToCore(
-    sensorDisplayTask,          // Task function
-    "SensorDisplayTask",        // Name of task
-    3072,                       // Stack size (bytes) - reduced further
-    NULL,                       // Parameter to pass
-    1,                          // Task priority
-    &sensorDisplayTaskHandle,   // Task handle
-    0                           // Core 0
-  );
-  Serial.println("Sensor and display task created successfully");
-  Serial.printf("Free heap after setup: %lu bytes\n", ESP.getFreeHeap());
+  Serial.printf("Free heap after setup: %u bytes\n", ESP.getFreeHeap());
 }
 
 void loop() {
@@ -597,17 +592,16 @@ void loop() {
   
   if (millis() - lastStatusPrint >= 30000) { // Print status every 30 seconds
     Serial.printf("=== System Status ===\n");
-    Serial.printf("Free heap: %lu bytes\n", ESP.getFreeHeap());
+    Serial.printf("Free heap: %u bytes\n", ESP.getFreeHeap());
     Serial.printf("Camera task stack high water mark: %d\n", uxTaskGetStackHighWaterMark(cameraTaskHandle));
+    Serial.printf("Display task stack high water mark: %d\n", uxTaskGetStackHighWaterMark(displayTaskHandle));
+    Serial.printf("Sensor task stack high water mark: %d\n", uxTaskGetStackHighWaterMark(sensorTaskHandle));
     if (webServerTaskHandle != NULL) {
       Serial.printf("Web server task stack high water mark: %d\n", uxTaskGetStackHighWaterMark(webServerTaskHandle));
     }
-    if (sensorDisplayTaskHandle != NULL) {
-      Serial.printf("Sensor display task stack high water mark: %d\n", uxTaskGetStackHighWaterMark(sensorDisplayTaskHandle));
-    }
     Serial.printf("WiFi status: %s\n", WiFi.status() == WL_CONNECTED ? "Connected" : "Disconnected");
     if (sensorDataValid) {
-      Serial.printf("Temperature: %.1f°C, Pressure: %.1f hPa, Altitude: %.1f m\n", temperature, pressure, altitude);
+      Serial.printf("BMP280: %.1f°C, %.0f Pa\n", currentTemperature, currentPressure);
     }
     lastStatusPrint = millis();
   }
