@@ -1,6 +1,9 @@
 #include "esp_camera.h"
 #include <WiFi.h>
 
+// ESP32-CAM OV2640 Camera Module - AI-Thinker board
+
+// Comment out warnings - not needed for basic setup
 //
 // WARNING!!! PSRAM IC required for UXGA resolution and high JPEG quality
 //            Ensure ESP32 Wrover Module or other board with PSRAM is selected
@@ -11,8 +14,9 @@
 //            seconds to process single frame. Face Detection is ENABLED if PSRAM is enabled as well
 
 // ===================
-// Select camera model
+// Select camera model - AI-Thinker ESP32-CAM with OV2640
 // ===================
+// Comment out all other camera models - only AI-Thinker needed
 //#define CAMERA_MODEL_WROVER_KIT // Has PSRAM
 //#define CAMERA_MODEL_ESP_EYE  // Has PSRAM
 //#define CAMERA_MODEL_ESP32S3_EYE // Has PSRAM
@@ -22,9 +26,10 @@
 //#define CAMERA_MODEL_M5STACK_ESP32CAM // No PSRAM
 //#define CAMERA_MODEL_M5STACK_UNITCAM // No PSRAM
 //#define CAMERA_MODEL_M5STACK_CAMS3_UNIT  // Has PSRAM
-#define CAMERA_MODEL_AI_THINKER // Has PSRAM
+#define CAMERA_MODEL_AI_THINKER // ESP32-CAM with OV2640 sensor
 //#define CAMERA_MODEL_TTGO_T_JOURNAL // No PSRAM
 //#define CAMERA_MODEL_XIAO_ESP32S3 // Has PSRAM
+// Comment out Espressif Internal Boards - not needed
 // ** Espressif Internal Boards **
 //#define CAMERA_MODEL_ESP32_CAM_BOARD
 //#define CAMERA_MODEL_ESP32S2_CAM_BOARD
@@ -68,15 +73,15 @@ void setup() {
   config.pin_reset = RESET_GPIO_NUM;
   config.xclk_freq_hz = 20000000;
   config.frame_size = FRAMESIZE_UXGA;
-  config.pixel_format = PIXFORMAT_JPEG;  // for streaming
-  //config.pixel_format = PIXFORMAT_RGB565; // for face detection/recognition
+  config.pixel_format = PIXFORMAT_JPEG;  // JPEG format for ESP32-CAM OV2640
+  //config.pixel_format = PIXFORMAT_RGB565; // Comment out - not needed for basic streaming
   config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
   config.fb_location = CAMERA_FB_IN_PSRAM;
-  config.jpeg_quality = 12;
+  config.jpeg_quality = 12;  // JPEG quality for OV2640
   config.fb_count = 1;
 
-  // if PSRAM IC present, init with UXGA resolution and higher JPEG quality
-  //                      for larger pre-allocated frame buffer.
+  // PSRAM configuration for ESP32-CAM
+  // Comment out face detection comments - not needed for basic camera
   if (config.pixel_format == PIXFORMAT_JPEG) {
     if (psramFound()) {
       config.jpeg_quality = 10;
@@ -88,17 +93,20 @@ void setup() {
       config.fb_location = CAMERA_FB_IN_DRAM;
     }
   } else {
+    // Comment out face detection settings - not needed for ESP32-CAM OV2640 basic use
     // Best option for face detection/recognition
     config.frame_size = FRAMESIZE_240X240;
-#if CONFIG_IDF_TARGET_ESP32S3
-    config.fb_count = 2;
-#endif
+// Comment out ESP32S3 specific settings - not needed for ESP32-CAM
+//#if CONFIG_IDF_TARGET_ESP32S3
+//    config.fb_count = 2;
+//#endif
   }
 
-#if defined(CAMERA_MODEL_ESP_EYE)
-  pinMode(13, INPUT_PULLUP);
-  pinMode(14, INPUT_PULLUP);
-#endif
+// Comment out ESP_EYE specific settings - not needed for ESP32-CAM OV2640
+//#if defined(CAMERA_MODEL_ESP_EYE)
+//  pinMode(13, INPUT_PULLUP);
+//  pinMode(14, INPUT_PULLUP);
+//#endif
 
   // camera init
   esp_err_t err = esp_camera_init(&config);
@@ -108,27 +116,31 @@ void setup() {
   }
 
   sensor_t *s = esp_camera_sensor_get();
-  // initial sensors are flipped vertically and colors are a bit saturated
-  if (s->id.PID == OV3660_PID) {
-    s->set_vflip(s, 1);        // flip it back
-    s->set_brightness(s, 1);   // up the brightness just a bit
-    s->set_saturation(s, -2);  // lower the saturation
-  }
-  // drop down frame size for higher initial frame rate
+  // OV2640 sensor configuration for ESP32-CAM
+  // Comment out OV3660 settings - ESP32-CAM uses OV2640
+  // if (s->id.PID == OV3660_PID) {
+  //   s->set_vflip(s, 1);        // flip it back
+  //   s->set_brightness(s, 1);   // up the brightness just a bit
+  //   s->set_saturation(s, -2);  // lower the saturation
+  // }
+  
+  // Set initial frame size for OV2640
   if (config.pixel_format == PIXFORMAT_JPEG) {
     s->set_framesize(s, FRAMESIZE_QVGA);
   }
 
-#if defined(CAMERA_MODEL_M5STACK_WIDE) || defined(CAMERA_MODEL_M5STACK_ESP32CAM)
-  s->set_vflip(s, 1);
-  s->set_hmirror(s, 1);
-#endif
+// Comment out M5Stack specific settings - not needed for ESP32-CAM OV2640
+//#if defined(CAMERA_MODEL_M5STACK_WIDE) || defined(CAMERA_MODEL_M5STACK_ESP32CAM)
+//  s->set_vflip(s, 1);
+//  s->set_hmirror(s, 1);
+//#endif
 
-#if defined(CAMERA_MODEL_ESP32S3_EYE)
-  s->set_vflip(s, 1);
-#endif
+// Comment out ESP32S3_EYE settings - not needed for ESP32-CAM OV2640
+//#if defined(CAMERA_MODEL_ESP32S3_EYE)
+//  s->set_vflip(s, 1);
+//#endif
 
-// Setup LED FLash if LED pin is defined in camera_pins.h
+// Setup LED Flash for ESP32-CAM (if available)
 #if defined(LED_GPIO_NUM)
   setupLedFlash(LED_GPIO_NUM);
 #endif
