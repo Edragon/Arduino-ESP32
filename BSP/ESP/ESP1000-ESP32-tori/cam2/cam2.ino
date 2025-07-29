@@ -1,26 +1,24 @@
 #include "esp_camera.h"
-#include <WiFi.h>
 #include <WebServer.h>
-#include <Wire.h>
-#include <BMx280I2C.h>
-#include "SSD1306Wire.h"
+#include <WiFi.h>
+// #include <Wire.h>
+// #include <BMx280I2C.h>
+// #include "SSD1306Wire.h"
 #include <driver/i2s.h>
 #include "FS.h"
 #include "SPIFFS.h"
 
-// ESP32-CAM OV2640 Simple Camera Server
-
 // ===================
 // Display configuration
 // ===================
-SSD1306Wire display(0x3c, 15, 13);
+// SSD1306Wire display(0x3c, 15, 13);
 
 // ===================
 // Sensor configuration
 // ===================
-BMx280I2C bmx280(0x76);
-float temp = 0.0;
-double pres = 0.0;
+// BMx280I2C bmx280(0x76);
+// float temp = 0.0;
+// double pres = 0.0;
 
 // ===================
 // Camera Model - AI-Thinker ESP32-CAM with OV2640
@@ -53,7 +51,7 @@ double pres = 0.0;
 #define I2S_WS    2
 #define I2S_SD    14
 #define I2S_SCK   12
-#define I2S_PORT  I2S_NUM_0
+#define I2S_PORT  I2S_NUM_0  // Use I2S_NUM_0 for camera compatibility
 #define SAMPLE_RATE 16000
 #define BITS_PER_SAMPLE 16
 #define RECORD_DURATION 5 // seconds
@@ -75,6 +73,8 @@ typedef struct {
     char     data[4];           // "data"
     uint32_t subchunk2Size;     // Data size
 } wav_header_t;
+
+portMUX_TYPE myMutex = portMUX_INITIALIZER_UNLOCKED;
 
 // State machine for recording
 enum RecordingState {
@@ -101,10 +101,14 @@ WebServer server(80);
 volatile bool triggerPressed = false;
 camera_fb_t* lastCapturedImage = nullptr;
 bool imageAvailableFromGPIO = false;
+unsigned long lastTriggerTime = 0;
+const unsigned long TRIGGER_INTERVAL = 5000; // 5 seconds in milliseconds
 
 // GPIO interrupt handler
 void IRAM_ATTR gpio3InterruptHandler() {
+  portENTER_CRITICAL_ISR(&myMutex);
   triggerPressed = true;
+  portEXIT_CRITICAL_ISR(&myMutex);
 }
 
 // Function to write WAV header
@@ -131,24 +135,26 @@ void setup() {
   Serial.begin(115200);
   Serial.println("ESP32-CAM Simple Web Camera Server");
 
-  display.init();
+  // display.init();
   
   // BMP280 sensor setup
+  /*
   Wire.begin(15, 13); // Using GPIO 15 for SDA, 13 for SCL
   if (!bmx280.begin())
   {
     Serial.println("begin() failed. check your BMx280 Interface and I2C Address.");
     // We don't want to halt everything if the sensor fails, so we just print a message.
   } else {
-	  if (bmx280.isBME280())
-		Serial.println("sensor is a BME280");
-	  else
-		Serial.println("sensor is a BMP280");
-	  bmx280.resetToDefaults();
-	  bmx280.writeOversamplingPressure(BMx280MI::OSRS_P_x16);
-	  bmx280.writeOversamplingTemperature(BMx280MI::OSRS_T_x16);
-	  Serial.println("sensor setup is done");
+      if (bmx280.isBME280())
+        Serial.println("sensor is a BME280");
+      else
+        Serial.println("sensor is a BMP280");
+      bmx280.resetToDefaults();
+      bmx280.writeOversamplingPressure(BMx280MI::OSRS_P_x16);
+      bmx280.writeOversamplingTemperature(BMx280MI::OSRS_T_x16);
+      Serial.println("sensor setup is done");
   }
+  */
 
   // Initialize SPIFFS
   if (!SPIFFS.begin(true)) {
@@ -157,30 +163,6 @@ void setup() {
       Serial.println("SPIFFS mounted successfully.");
   }
 
-  // Configure and install I2S driver
-  const i2s_config_t i2s_config = {
-      .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX),
-      .sample_rate = SAMPLE_RATE,
-      .bits_per_sample = (i2s_bits_per_sample_t)BITS_PER_SAMPLE,
-      .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
-      .communication_format = (i2s_comm_format_t)(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
-      .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
-      .dma_buf_count = 8,
-      .dma_buf_len = 1024,
-      .use_apll = false
-  };
-  i2s_driver_install(I2S_PORT, &i2s_config, 0, NULL);
-
-  // Set I2S pin configuration
-  const i2s_pin_config_t pin_config = {
-      .bck_io_num = I2S_SCK,
-      .ws_io_num = I2S_WS,
-      .data_out_num = I2S_PIN_NO_CHANGE,
-      .data_in_num = I2S_SD
-  };
-  i2s_set_pin(I2S_PORT, &pin_config);
-  Serial.println("I2S driver installed.");
-  
   // Camera configuration
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
@@ -230,9 +212,54 @@ void setup() {
   }
   Serial.println("Camera initialized successfully");
 
-  // Configure camera sensor
-  sensor_t * s = esp_camera_sensor_get();
-  s->set_framesize(s, FRAMESIZE_QVGA); // Start with lower resolution
+  // Give the camera a moment to fully initialize
+  delay(100);
+
+  // I2S driver is already installed by the camera driver. We only need to set the pins for the microphone.
+  /*
+  const i2s_config_t i2s_config = {
+      .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX),
+      .sample_rate = SAMPLE_RATE,
+      .bits_per_sample = (i2s_bits_per_sample_t)BITS_PER_SAMPLE,
+      .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
+      .communication_format = (i2s_comm_format_t)(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
+      .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
+      .dma_buf_count = 8,
+      .dma_buf_len = 1024,
+      .use_apll = false
+  };
+  i2s_driver_install(I2S_PORT, &i2s_config, 0, NULL);
+  */
+
+  // Set I2S pin configuration
+  const i2s_pin_config_t pin_config = {
+      .bck_io_num = I2S_SCK,
+      .ws_io_num = I2S_WS,
+      .data_out_num = I2S_PIN_NO_CHANGE,
+      .data_in_num = I2S_SD
+  };
+  i2s_set_pin(I2S_PORT, &pin_config);
+  Serial.println("I2S pins configured.");
+  
+  // Configure camera sensor with retry mechanism
+  sensor_t * s = nullptr;
+  int retries = 5;
+  while (retries > 0 && s == nullptr) {
+    s = esp_camera_sensor_get();
+    if (s == nullptr) {
+      Serial.printf("Sensor not ready, retrying... (%d attempts left)\n", retries-1);
+      delay(100);
+      retries--;
+    }
+  }
+  
+  if (s == nullptr) {
+    Serial.println("Error: Camera sensor not found after multiple attempts!");
+  } else {
+    Serial.println("Camera sensor found, configuring...");
+    s->set_framesize(s, FRAMESIZE_QVGA); // Start with lower resolution
+    Serial.println("Camera sensor configured successfully");
+  }
   
   // Setup LED flash
   pinMode(LED_GPIO_NUM, OUTPUT);
@@ -261,22 +288,25 @@ void setup() {
   server.on("/", handleRoot);
   server.on("/capture", handleCapture);
   server.on("/last", handleLastImage);
+  server.on("/audio", handleAudioDownload);
   
   server.begin();
   Serial.println("Web server started");
 
+  /*
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   display.setFont(ArialMT_Plain_10);
   display.drawString(0, 0, "IP Address:");
   display.drawString(0, 16, WiFi.localIP().toString());
   display.display();
+  */
 }
 
 void handleAudioRecording() {
     // Declare variables outside switch statement to avoid "crosses initialization" error
-    const int bufferSize = 1024;
-    uint8_t buffer[bufferSize];
+    static const int bufferSize = 1024;
+    static uint8_t buffer[bufferSize];
     size_t bytesRead;
     esp_err_t result;
 
@@ -286,7 +316,11 @@ void handleAudioRecording() {
             break;
 
         case START_RECORDING:
+            // Disable interrupts during SPIFFS operations
+            taskDISABLE_INTERRUPTS();
             audioFile = SPIFFS.open(AUDIO_FILE_PATH, FILE_WRITE);
+            taskENABLE_INTERRUPTS();
+            
             if (!audioFile) {
                 Serial.println("Failed to open audio file for writing.");
                 currentRecordingState = IDLE; // Go back to idle
@@ -295,7 +329,9 @@ void handleAudioRecording() {
 
             // Write a placeholder for the WAV header
             wav_header_t header_placeholder;
+            taskDISABLE_INTERRUPTS();
             audioFile.write((const byte*)&header_placeholder, sizeof(header_placeholder));
+            taskENABLE_INTERRUPTS();
             
             Serial.printf("Recording audio for %d seconds...\n", RECORD_DURATION);
             recordingStartTime = millis();
@@ -304,11 +340,14 @@ void handleAudioRecording() {
             break;
 
         case RECORDING:
-            // Read data from I2S
+            // Read data from I2S (this doesn't use flash, so it's safe)
             result = i2s_read(I2S_PORT, buffer, bufferSize, &bytesRead, 0); // Use 0 timeout for non-blocking
             
             if (result == ESP_OK && bytesRead > 0) {
+                // Disable interrupts during file write
+                taskDISABLE_INTERRUPTS();
                 audioFile.write(buffer, bytesRead);
+                taskENABLE_INTERRUPTS();
                 totalBytesWritten += bytesRead;
             }
 
@@ -321,12 +360,16 @@ void handleAudioRecording() {
         case FINISH_RECORDING:
             Serial.printf("Recording finished. Total bytes written: %u\n", totalBytesWritten);
 
+            // Disable interrupts during final file operations
+            taskDISABLE_INTERRUPTS();
             // Go back to the beginning of the file to write the final header
             audioFile.seek(0);
             writeWavHeader(audioFile, SAMPLE_RATE, BITS_PER_SAMPLE, totalBytesWritten);
             
             // Close the file
             audioFile.close();
+            taskENABLE_INTERRUPTS();
+            
             Serial.printf("Audio saved to %s\n", AUDIO_FILE_PATH);
             
             currentRecordingState = IDLE; // Go to idle state
@@ -335,17 +378,30 @@ void handleAudioRecording() {
 }
 
 void loop() {
-  // Check for GPIO3 trigger
+  // Check for periodic trigger every 5 seconds
+  unsigned long currentTime = millis();
+  if (currentTime - lastTriggerTime >= TRIGGER_INTERVAL) {
+    triggerPressed = true;
+    lastTriggerTime = currentTime;
+  }
+  
+  // Check for GPIO3 trigger (or periodic trigger)
+  portENTER_CRITICAL(&myMutex);
   if (triggerPressed) {
     triggerPressed = false; // Reset flag
-    Serial.println("GPIO3 trigger detected - capturing image and starting audio recording");
+    portEXIT_CRITICAL(&myMutex);
+    Serial.println("Trigger detected - capturing image and starting audio recording");
 
     // Start audio recording if not already in progress
     if (currentRecordingState == IDLE) {
         currentRecordingState = START_RECORDING;
     }
 
+    // Handle audio recording state machine
+    handleAudioRecording();
+
     // Take a single measurement
+    /*
     if (bmx280.measure()) {
       do {
         delay(10);
@@ -365,6 +421,7 @@ void loop() {
     } else {
       Serial.println("could not start measurement");
     }
+    */
     
     // Call the same capture function used by web interface
     captureImageAndRespond();
@@ -373,9 +430,6 @@ void loop() {
     delay(100);
   }
   
-  // Handle the audio recording state machine
-  handleAudioRecording();
-
   server.handleClient();
   delay(10);
 }
@@ -401,10 +455,11 @@ void handleRoot() {
   html += "</head><body>";
   html += "<div class='container'>";
   html += "<h1>📷 ESP32-CAM Simple Capture</h1>";
-  html += "<p>Temperature: " + String(temp) + " C, Pressure: " + String(pres) + " Pa</p>";
+  // html += "<p>Temperature: " + String(temp) + " C, Pressure: " + String(pres) + " Pa</p>";
   html += "<p>Click the button below to capture an image, or view the last GPIO-triggered image</p>";
   html += "<button class='capture-btn' onclick='captureImage()'>📸 Capture Image</button>";
   html += "<button class='capture-btn' onclick='viewLastGPIO()' style='background-color: #28a745;'>🔄 View Last GPIO Image</button>";
+  html += "<button class='capture-btn' onclick='downloadAudio()' style='background-color: #dc3545;'>🎵 Download Last Audio</button>";
   html += "<div class='status' id='status'>Ready to capture</div>";
   html += "<div class='image-container' id='imageContainer'>";
   html += "<p style='color: #666;'>Captured image will appear here</p>";
@@ -449,6 +504,32 @@ void handleRoot() {
   html += "    })";
   html += "    .catch(error => {";
   html += "      document.getElementById('status').innerText = 'No GPIO image available';";
+  html += "      document.getElementById('status').style.color = 'orange';";
+  html += "      console.error('Error:', error);";
+  html += "    });";
+  html += "}";
+  html += "function downloadAudio() {";
+  html += "  document.getElementById('status').innerText = 'Downloading audio...';";
+  html += "  document.getElementById('status').style.color = 'blue';";
+  html += "  fetch('/audio')";
+  html += "    .then(response => {";
+  html += "      if (!response.ok) throw new Error('No audio file available');";
+  html += "      return response.blob();";
+  html += "    })";
+  html += "    .then(blob => {";
+  html += "      const url = URL.createObjectURL(blob);";
+  html += "      const a = document.createElement('a');";
+  html += "      a.href = url;";
+  html += "      a.download = 'recording.wav';";
+  html += "      document.body.appendChild(a);";
+  html += "      a.click();";
+  html += "      document.body.removeChild(a);";
+  html += "      URL.revokeObjectURL(url);";
+  html += "      document.getElementById('status').innerText = 'Audio downloaded successfully!';";
+  html += "      document.getElementById('status').style.color = 'green';";
+  html += "    })";
+  html += "    .catch(error => {";
+  html += "      document.getElementById('status').innerText = 'No audio file available';";
   html += "      document.getElementById('status').style.color = 'orange';";
   html += "      console.error('Error:', error);";
   html += "    });";
@@ -538,5 +619,38 @@ void handleLastImage() {
   } else {
     server.send(404, "text/plain", "No GPIO-captured image available");
     Serial.println("No GPIO-captured image available");
+  }
+}
+
+// Handle request for audio file download
+void handleAudioDownload() {
+  if (SPIFFS.exists(AUDIO_FILE_PATH)) {
+    File audioFile = SPIFFS.open(AUDIO_FILE_PATH, FILE_READ);
+    if (audioFile) {
+      Serial.println("Serving audio file to web client");
+      
+      // Send audio as WAV file
+      server.sendHeader("Content-Type", "audio/wav");
+      server.sendHeader("Content-Length", String(audioFile.size()));
+      server.sendHeader("Content-Disposition", "attachment; filename=recording.wav");
+      server.sendHeader("Cache-Control", "no-cache");
+      
+      // Send the audio data
+      WiFiClient client = server.client();
+      uint8_t buffer[1024];
+      while (audioFile.available()) {
+        size_t bytesRead = audioFile.read(buffer, sizeof(buffer));
+        client.write(buffer, bytesRead);
+      }
+      
+      audioFile.close();
+      Serial.println("Audio file sent to web client");
+    } else {
+      server.send(500, "text/plain", "Failed to open audio file");
+      Serial.println("Failed to open audio file");
+    }
+  } else {
+    server.send(404, "text/plain", "No audio file available");
+    Serial.println("No audio file available");
   }
 }
