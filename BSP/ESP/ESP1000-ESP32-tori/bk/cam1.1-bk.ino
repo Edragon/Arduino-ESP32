@@ -1,23 +1,8 @@
 #include "esp_camera.h"
 #include <WiFi.h>
 #include <WebServer.h>
-#include <Wire.h>
-#include <BMx280I2C.h>
-#include "SSD1306Wire.h"
 
 // ESP32-CAM OV2640 Simple Camera Server with Single Capture Button
-
-// ===================
-// Display configuration
-// ===================
-SSD1306Wire display(0x3c, 15, 13);
-
-// ===================
-// Sensor configuration
-// ===================
-BMx280I2C bmx280(0x76);
-float temp = 0.0;
-double pres = 0.0;
 
 // ===================
 // Camera Model - AI-Thinker ESP32-CAM with OV2640
@@ -65,25 +50,6 @@ void IRAM_ATTR gpio3InterruptHandler() {
 void setup() {
   Serial.begin(115200);
   Serial.println("ESP32-CAM Simple Web Camera Server");
-
-  display.init();
-  
-  // BMP280 sensor setup
-  Wire.begin(15, 13); // Using GPIO 15 for SDA, 13 for SCL
-  if (!bmx280.begin())
-  {
-    Serial.println("begin() failed. check your BMx280 Interface and I2C Address.");
-    // We don't want to halt everything if the sensor fails, so we just print a message.
-  } else {
-	  if (bmx280.isBME280())
-		Serial.println("sensor is a BME280");
-	  else
-		Serial.println("sensor is a BMP280");
-	  bmx280.resetToDefaults();
-	  bmx280.writeOversamplingPressure(BMx280MI::OSRS_P_x16);
-	  bmx280.writeOversamplingTemperature(BMx280MI::OSRS_T_x16);
-	  Serial.println("sensor setup is done");
-  }
   
   // Camera configuration
   camera_config_t config;
@@ -167,13 +133,6 @@ void setup() {
   
   server.begin();
   Serial.println("Web server started");
-
-  display.clear();
-  display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.setFont(ArialMT_Plain_10);
-  display.drawString(0, 0, "IP Address:");
-  display.drawString(0, 16, WiFi.localIP().toString());
-  display.display();
 }
 
 
@@ -183,41 +142,17 @@ void loop() {
   if (triggerPressed) {
     triggerPressed = false; // Reset flag
     Serial.println("GPIO3 trigger detected - capturing image");
-
-    // Take a single measurement
-    if (bmx280.measure()) {
-      do {
-        delay(10);
-      } while (!bmx280.hasValue());
-      pres = bmx280.getPressure64();
-      temp = bmx280.getTemperature();
-      Serial.print("  Temperature: "); Serial.print(temp);
-      Serial.print(" C, Pressure: "); Serial.println(pres);
-
-      display.clear();
-      display.setTextAlignment(TEXT_ALIGN_LEFT);
-      display.setFont(ArialMT_Plain_10);
-      display.drawString(0, 0, "Temp: " + String(temp));
-      display.drawString(0, 16, "Press: " + String(pres));
-      display.display();
-
-    } else {
-      Serial.println("could not start measurement");
-    }
     
     // Call the same capture function used by web interface
     captureImageAndRespond();
     
     // Small delay to avoid multiple triggers
-    delay(5000);
+    delay(500);
   }
   
   server.handleClient();
   delay(10);
 }
-
-
-
 
 // Main page with capture button
 void handleRoot() {
@@ -238,7 +173,6 @@ void handleRoot() {
   html += "</head><body>";
   html += "<div class='container'>";
   html += "<h1>📷 ESP32-CAM Simple Capture</h1>";
-  html += "<p>Temperature: " + String(temp) + " C, Pressure: " + String(pres) + " Pa</p>";
   html += "<p>Click the button below to capture an image, or view the last GPIO-triggered image</p>";
   html += "<button class='capture-btn' onclick='captureImage()'>📸 Capture Image</button>";
   html += "<button class='capture-btn' onclick='viewLastGPIO()' style='background-color: #28a745;'>🔄 View Last GPIO Image</button>";
