@@ -1722,7 +1722,7 @@ static const uint8_t LoRaMacMaxEirpTable[] = {8, 10, 12, 13, 14, 16, 18, 20, 21,
  *          \ref LORAMAC_STATUS_PARAMETER_INVALID,
  *          \ref LORAMAC_STATUS_REGION_NOT_SUPPORTED.
  */
-LoRaMacStatus_t LoRaMacInitialization(LoRaMacPrimitives_t *primitives, LoRaMacCallback_t *callbacks, LoRaMacRegion_t region, eDeviceClass nodeClass = CLASS_A);
+LoRaMacStatus_t LoRaMacInitialization(LoRaMacPrimitives_t *primitives, LoRaMacCallback_t *callbacks, LoRaMacRegion_t region, eDeviceClass nodeClass = CLASS_A, bool region_change = false);
 
 /*!
  * \brief   Returns the Device Address set by the LoRaWan server
@@ -1957,5 +1957,11 @@ LoRaMacStatus_t LoRaMacMlmeRequest(MlmeReq_t *mlmeRequest);
  *          \ref LORAMAC_STATUS_DEVICE_OFF.
  */
 LoRaMacStatus_t LoRaMacMcpsRequest(McpsReq_t *mcpsRequest);
+
+void ResetMacCounters(void);
+
+extern uint8_t LoRaMacNwkSKey[];
+extern uint8_t LoRaMacAppSKey[];
+extern uint32_t LoRaMacDevAddr;
 
 #endif // __LORAMAC_H__

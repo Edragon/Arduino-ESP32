@@ -29,6 +29,8 @@
 #include "mac/region/Region.h"
 #include "mac/region/RegionAS923.h"
 
+extern bool force_low_dr_opt;
+
 #define LORAWAN_CONFIRMED_MSG_ON 0			/**< LoRaWAN confirmed messages */
 #define LORAWAN_CERTIF_PORT 224				/**< LoRaWAN certification port */
 #define LORAWAN_APP_PORT 2					/**< LoRaWAN application port, do not use 224. It is reserved for certification */
@@ -154,7 +156,7 @@ typedef struct LoraMacHelper_ComplianceTest_s
  * @retval error status
  */
 lmh_error_status lmh_init(lmh_callback_t *callbacks, lmh_param_t lora_param,
-						  bool otaa, eDeviceClass nodeClass = CLASS_A, LoRaMacRegion_t region = LORAMAC_REGION_EU868);
+						  bool otaa, eDeviceClass nodeClass = CLASS_A, LoRaMacRegion_t region = LORAMAC_REGION_EU868, bool region_change = false);
 
 /**@brief Send data
  *
@@ -307,5 +309,25 @@ bool lmh_setConfRetries(uint8_t retries);
  * \retval Number of retries
  */
 uint8_t lmh_getConfRetries(void);
+
+/**
+ * @brief Reset MAC counters
+ * 
+ */
+void lmh_reset_mac(void);
+
+/**
+ * @brief Get Network Session Key
+ * 
+ * @param key Buffer where the key is stored
+ */
+void lmh_getNwSkey(uint8_t *key);
+
+/**
+ * @brief Get Application Sesssion Key
+ * 
+ * @param key Buffer where the key is stored
+ */
+void lmh_getAppSkey(uint8_t *key);
 
 #endif

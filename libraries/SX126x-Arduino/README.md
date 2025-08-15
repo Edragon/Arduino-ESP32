@@ -1,9 +1,18 @@
 # SX126x-Arduino [![Build Status](https://github.com/beegee-tokyo/SX126x-Arduino/workflows/Arduino%20Library%20CI/badge.svg)](https://github.com/beegee-tokyo/SX126x-Arduino/actions)[![Documentation](https://github.com/adafruit/ci-arduino/blob/master/assets/doxygen_badge.svg)](https://beegee-tokyo.github.io/SX126x-Arduino/)
 ----
-Arduino library for LoRa communication with Semtech SX126x chips. It is based on Semtech's SX126x libraries and adapted to the Arduino framework for ESP32, ESP8266 and nRF52832. It will not work with other uC's like AVR.    
+Arduino library for LoRa communication with Semtech SX126x chips. It is based on Semtech's SX126x libraries and adapted to the Arduino framework for ESP32, ESP8266, nRF52832 and RP2040. It will not work with other uC's like AVR.    
 LoRaWAN version: **`MAC V1.0.2`** and Regional Parameters version: **`PHY V1.0.2 REV B`**    
 
-# _**IMPORTANT: RAK11300 module (RP2040) support is only tested with the [ArduinoCore Mbed BSP](https://github.com/arduino/ArduinoCore-mbed). It will not work with other BSP's for the Raspberry RP2040.**_
+----
+----
+
+# _**IMPORTANT:**_ 
+_**RAK11300 module (RP2040) support is only tested with the [ArduinoCore Mbed BSP](https://github.com/arduino/ArduinoCore-mbed). It will not work with other BSP's for the Raspberry RP2040.**_
+# _**NEWS:**_ 
+_**Current testing RAK11300/RAK11310 with the [Arduino Pico BSP](https://github.com/earlephilhower/arduino-pico), still experimental, but promising.**_
+
+----
+----
 
 _**IMPORTANT: READ [WHAT'S NEW IN V2](./README_V2.md)**_
 _**Some major changes are made in V2 of the SX126x-Arduino library:**_    
@@ -22,10 +31,10 @@ _**This requires some code changes in your existing applications. Please read [W
 | [Changelog](#changelog) | &nbsp;&nbsp;&nbsp;&nbsp;[GPIO definitions](#gpio-definitions) |  &nbsp;&nbsp;&nbsp;&nbsp;[Initialize](#initialize) |
 | [Features](#features) | &nbsp;&nbsp;&nbsp;&nbsp;[Example HW configuration](#example-hw-configuration) | &nbsp;&nbsp;&nbsp;&nbsp;[Callbacks](#callbacks) |
 | [Functions](#functions) | &nbsp;&nbsp;&nbsp;&nbsp;[Initialize the LoRa HW](#initialize-the-lora-hw) | &nbsp;&nbsp;&nbsp;&nbsp;[Join](#join) |
-| &nbsp;&nbsp;[Module specific setup](#module-specific-setup) | &nbsp;&nbsp;&nbsp;&nbsp;[Initialization for specific modules](#simplified-lora-hw-initialization-for-specific-modules) | &nbsp;&nbsp;&nbsp;&nbsp;[LoRaWan single channel gateway](#lolawan-single-channel-gateway) |
+| &nbsp;&nbsp;[Module specific setup](#module-specific-setup) | &nbsp;&nbsp;&nbsp;&nbsp;[Initialization for specific modules](#simplified-lora-hw-initialization-for-specific-modules) | &nbsp;&nbsp;&nbsp;&nbsp;[LoRaWan single channel gateway](#lorawan-single-channel-gateway) |
 | &nbsp;&nbsp;[Chip selection](#chip-selection) | &nbsp;&nbsp;&nbsp;&nbsp;[Setup the callbacks for LoRa events](#setup-the-callbacks-for-lora-events) | &nbsp;&nbsp;&nbsp;&nbsp;[Limit frequency hopping to a sub band](#limit-frequency-hopping-to-a-sub-band) |
 | &nbsp;&nbsp;[LoRa parameters](#lora-parameters) | &nbsp;&nbsp;&nbsp;&nbsp;[Initialize the radio](#initialize-the-radio) |   |
-| &nbsp;&nbsp;[SPI definition](#mcu-to-sx126x-spi-definition) | &nbsp;&nbsp;&nbsp;&nbsp;[Initialize the radio](#initialize-the-radio) | [Examples](./examples/README.md) | 
+| &nbsp;&nbsp;[SPI definition](#mcu-to-sx126x-spi-definition) | &nbsp;&nbsp;&nbsp;&nbsp;[Initialize the radio after CPU woke up from deep sleep](#initialize-the-radio-after-cpu-woke-up-from-deep-sleep) | [Examples](./examples/README.md) | 
 | &nbsp;&nbsp;[TXCO and antenna control](#explanation-for-txco-and-antenna-control) | &nbsp;&nbsp;&nbsp;&nbsp;[Start listening for packets](#start-listening-for-packets) | [Installation](#installation) |
 
 ----
@@ -35,7 +44,7 @@ For now the library is tested with an [eByte E22-900M22S](http://www.ebyte.com/e
 
 __**Check out the example provided with this library to learn the basic functions.**__
 
-Especially for the deep sleep support on the ESP32 check out the example DeepSleep.    
+For the deep sleep support on the ESP32 check out the example DeepSleep.    
 ===
 
 THIS IS WORK IN PROGRESS AND NOT ALL FUNCTIONS ARE INCLUDED NOR TESTED. USE IT AT YOUR OWN RISK!
@@ -79,6 +88,35 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ----
 ## Changelog
 [Code releases](CHANGELOG.md)
+- 2025-06-06 Fix RAK3112
+  - Correct LoRa pin assignment for RAK3112
+- 2025-01-16 Fix RP2040 assert issue
+  - Set timer priority correct, thanks to _**@EdisonAgudelo**_
+  - Add RAK3112 support
+- 2025-01-05 Add function to read the Syncword
+  - Add radio function to read the radio syncword uint16_t syncword = Radio.GetSyncWord(void);
+- 2025-01-01 Add custom Syncword and Low DataRate optimization
+  - Add radio function to set a custom Syncword Radio.SetCustomSyncWord(uint16_t syncword);
+  - Add radio function to enforce Low DataRate optimization Radio.EnforceLowDRopt(bool enforce);
+- 2024-10-17 Access to NWsKey and AppsKey
+  - Add functions to get network session key and app session key after join
+- 2024-07-02 Add missing header file
+  - Fix compilation error
+- 2024-06-26 
+  - With ADR enabled, fix the DR reset to default when confirmed/unconfirmed packets are sent.
+- 2024-02-24
+  - Fix callbacks for P2P RX and TX timeout not being called
+- 2023-12-14
+  - Seems RAK11300 and arduino-pico BSP is working now.   _**still experimental**_
+- 2023-12-12
+  - Added support for the RAK11300 in [arduino-pico](https://github.com/earlephilhower/arduino-pico) BSP  _**still experimental**_
+- 2023-11-22
+  - Change behaviour of IRQ_HEADER_ERROR, thanks to _**@JeromeBriot**_
+- 2023-10-01
+  - Fix public/private network always public
+  - Add option to restart MAC stack to change e.g. region without re-init timers
+- 2023-08-27
+  - Add function to reset MAC counters
 - 2023-05-16
   - Fix typo in RadioTimeOnAir for FSK
   - Improve RadioTimeOnAir for FSK, thanks to _**@mikedupi**_
@@ -295,11 +333,20 @@ int RADIO_RXEN = 27;     // LORA ANTENNA RX ENABLE
 ----
 #### LoRa definitions
 Check the SX126x datasheet for explanations    
+The bandwidth can be set to any bandwidth supported by the SX126x:    
+| Index | Bandwidth | Index | Bandwidth |
+| --- | --- | --- | --- |
+| 0 | 125 kHz | 5 | 31.25 kHz |
+| 1 | 250 kHz | 6 | 20.83 kHz |
+| 2 | 500 kHz | 7 | 15.63 kHz |
+| 3 | 62.5 kHz | 8 | 10.42 kHz |
+| 4 | 41.67 kHz | 9 | 7.81 kHz |
+
 ```cpp
 // Define LoRa parameters
 #define RF_FREQUENCY 868000000  // Hz
 #define TX_OUTPUT_POWER 22      // dBm
-#define LORA_BANDWIDTH 0        // [0: 125 kHz, 1: 250 kHz, 2: 500 kHz, 3: Reserved]
+#define LORA_BANDWIDTH 0        // [0: 125 kHz, 1: 250 kHz, 2: 500 kHz, 3 ... 9 see table]
 #define LORA_SPREADING_FACTOR 7 // [SF7..SF12]
 #define LORA_CODINGRATE 1       // [1: 4/5, 2: 4/6,  3: 4/7,  4: 4/8]
 #define LORA_PREAMBLE_LENGTH 8  // Same for Tx and Rx
@@ -366,9 +413,15 @@ The RAK4630/4631 module has the nRF52840 and SX1262 chips integrated in a module
 ```
 ----
 #### Simplified LoRa HW initialization for RAK11300/11310 module
-The RAK11300/11310 module has the Rp2040 and SX1262 chips integrated in a module. Therefore the hardware configuration is fixed.    
+The RAK11300/11310 module has the RP2040 and SX1262 chips integrated in a module. Therefore the hardware configuration is fixed.    
 ```cpp
   lora_rak11300_init();
+```
+----
+#### Simplified LoRa HW initialization for RAK13300 module
+The RAK13300 module is an IO module that has a LoRa SX1262 LoRa transceiver. It is made for the RAK11200 ESP32 module and the hardware configuration is fixed.    
+```cpp
+  lora_rak13300_init();
 ```
 ----
 #### Initialize the LoRa HW after CPU woke up from deep sleep
@@ -470,20 +523,9 @@ In addition you must define several LoRaWan parameters.
 You can find a lot of information about LoRaWan on the [LoRa Alliance](https://lora-alliance.org/) website.
 
 ----
-#### ArduinoIDE LoRaWan region definitions 
-_**Region definition has changed since library version 2.0.0**_    
-~~If you are using ArduinoIDE you need to edit the file ```/src/mac/Commissioning.h``` and define the region there.~~    
- 
-~~In Arduino IDE you can find the file in _**`<arduinosketchfolder>/libraries/SX126x-Arduino/src/mac`**_    
-In PlatformIO this is usually _**`<user>/.platformio/lib/SX126x-Arduino/src/mac`**_~~    
 
-----
-#### PlatformIO LoRaWan region definitions 
-_**Region definition has changed since library version 2.0.0**_    
-~~If you are using PlatformIO you must define the region in the platformio.ini file of your project.~~     
-
-#### LoRaWAN region definitions
-Since V2.0.0 the LoRaWAN region is selected during the initialization. It is no longer required to change any header files.
+#### LoRaWan region definitions 
+The LoRaWAN region is set during the lmh_init() call.    
 See [lmh_init()](#initialize) for details.
 
 ----

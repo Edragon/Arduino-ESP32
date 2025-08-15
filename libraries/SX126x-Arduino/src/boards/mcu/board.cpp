@@ -35,13 +35,23 @@ Maintainer: Miguel Luis and Gregory Cristian
  *****************************************************************************/
 #include "board.h"
 
-#if defined NRF52_SERIES || defined ESP32
+#if defined ARDUINO_RAKWIRELESS_RAK11300
+#include <FreeRTOS.h>
+#include <semphr.h>
+#include <task.h>
+#endif
+
+#ifndef TASK_PRIO_NORMAL
+#define TASK_PRIO_NORMAL 1
+#endif
+
+#if defined NRF52_SERIES || defined ESP32 || defined ARDUINO_RAKWIRELESS_RAK11300
 /** Semaphore used by SX126x IRQ handler to wake up LoRaWAN task */
 SemaphoreHandle_t _lora_sem = NULL;
 
 /** LoRa task handle */
 TaskHandle_t _loraTaskHandle;
-/** GPS reading task */
+/** LoRa handling task */
 void _lora_task(void *pvParameters);
 #endif
 
@@ -82,9 +92,11 @@ uint32_t lora_hardware_init(hw_config hwConfig)
 
 	LOG_LIB("BRD", "SyncWord = %04X", readSyncWord);
 
-	if ((readSyncWord == 0x2414) || (readSyncWord == 0x4434))
+	// There could be a custom syncword, better test for 0xFFFF
+	// if ((readSyncWord == 0x2414) || (readSyncWord == 0x4434))
+	if (readSyncWord != 0xFFFF)
 	{
-#if defined NRF52_SERIES || defined ESP32 || ARDUINO_ARCH_RP2040
+#if defined NRF52_SERIES || defined ESP32 || defined ARDUINO_ARCH_RP2040
 		if (start_lora_task())
 		{
 			return 0;
@@ -128,9 +140,11 @@ uint32_t lora_hardware_re_init(hw_config hwConfig)
 
 	LOG_LIB("BRD", "SyncWord = %04X", readSyncWord);
 
-	if ((readSyncWord == 0x2414) || (readSyncWord == 0x4434))
+	// There could be a custom syncword, better test for 0xFFFF
+	// if ((readSyncWord == 0x2414) || (readSyncWord == 0x4434))
+	if (readSyncWord != 0xFFFF)
 	{
-#if defined NRF52_SERIES || defined ESP32 || ARDUINO_ARCH_RP2040
+#if defined NRF52_SERIES || defined ESP32 || defined ARDUINO_ARCH_RP2040
 		if (start_lora_task())
 		{
 			return 0;
@@ -173,9 +187,11 @@ uint32_t lora_isp4520_init(int chipType)
 
 	LOG_LIB("BRD", "SyncWord = %04X", readSyncWord);
 
-	if ((readSyncWord == 0x2414) || (readSyncWord == 0x4434))
+	// There could be a custom syncword, better test for 0xFFFF
+	// if ((readSyncWord == 0x2414) || (readSyncWord == 0x4434))
+	if (readSyncWord != 0xFFFF)
 	{
-#if defined NRF52_SERIES || defined ESP32 || ARDUINO_ARCH_RP2040
+#if defined NRF52_SERIES || defined ESP32 || defined ARDUINO_ARCH_RP2040
 		if (start_lora_task())
 		{
 			return 0;
@@ -220,9 +236,11 @@ uint32_t lora_rak4630_init(void)
 
 	LOG_LIB("BRD", "SyncWord = %04X", readSyncWord);
 
-	if ((readSyncWord == 0x2414) || (readSyncWord == 0x4434))
+	// There could be a custom syncword, better test for 0xFFFF
+	// if ((readSyncWord == 0x2414) || (readSyncWord == 0x4434))
+	if (readSyncWord != 0xFFFF)
 	{
-#if defined NRF52_SERIES || defined ESP32 || ARDUINO_ARCH_RP2040
+#if defined NRF52_SERIES || defined ESP32 || defined ARDUINO_ARCH_RP2040
 		if (start_lora_task())
 		{
 			return 0;
@@ -273,12 +291,15 @@ uint32_t lora_rak11300_init(void)
 
 	LOG_LIB("BRD", "SyncWord = %04X", readSyncWord);
 
-	if ((readSyncWord == 0x2414) || (readSyncWord == 0x4434))
+	// There could be a custom syncword, better test for 0xFFFF
+	// if ((readSyncWord == 0x2414) || (readSyncWord == 0x4434))
+	if (readSyncWord != 0xFFFF)
 	{
 		// If we are compiling for ESP32, nRF52 or RP2040 we start background task
-#if defined NRF52_SERIES || defined ESP32 || ARDUINO_ARCH_RP2040
+#if defined NRF52_SERIES || defined ESP32 || defined ARDUINO_ARCH_RP2040
 		if (start_lora_task())
 		{
+			delay(500);
 			return 0;
 		}
 		else
@@ -333,9 +354,11 @@ uint32_t lora_rak13300_init(void)
 
 	LOG_LIB("BRD", "SyncWord = %04X", readSyncWord);
 
-	if ((readSyncWord == 0x2414) || (readSyncWord == 0x4434))
+	// There could be a custom syncword, better test for 0xFFFF
+	// if ((readSyncWord == 0x2414) || (readSyncWord == 0x4434))
+	if (readSyncWord != 0xFFFF)
 	{
-#if defined NRF52_SERIES || defined ESP32 || ARDUINO_ARCH_RP2040
+#if defined NRF52_SERIES || defined ESP32 || defined ARDUINO_ARCH_RP2040 || defined ARDUINO_RAKWIRELESS_RAK11300
 		if (start_lora_task())
 		{
 			return 0;
@@ -351,7 +374,55 @@ uint32_t lora_rak13300_init(void)
 	return 1;
 }
 
-#if defined NRF52_SERIES || defined ESP32
+uint32_t lora_rak3112_init(void)
+{
+	_hwConfig.CHIP_TYPE = SX1262;		   // Chip type, SX1261 or SX1262
+	_hwConfig.PIN_LORA_RESET = 8;		   // LORA RESET
+	_hwConfig.PIN_LORA_NSS = 7;			   // LORA SPI CS
+	_hwConfig.PIN_LORA_SCLK = 5;		   // LORA SPI CLK
+	_hwConfig.PIN_LORA_MISO = 3;		   // LORA SPI MISO
+	_hwConfig.PIN_LORA_DIO_1 = 47;		   // LORA DIO_1
+	_hwConfig.PIN_LORA_BUSY = 48;		   // LORA SPI BUSY
+	_hwConfig.PIN_LORA_MOSI = 6;		   // LORA SPI MOSI
+	_hwConfig.RADIO_TXEN = -1;			   // LORA ANTENNA TX ENABLE (e.g. eByte E22 module)
+	_hwConfig.RADIO_RXEN = 4;			   // LORA ANTENNA RX ENABLE (e.g. eByte E22 module)
+	_hwConfig.USE_DIO2_ANT_SWITCH = true;  // LORA DIO2 controls antenna
+	_hwConfig.USE_DIO3_TCXO = true;		   // LORA DIO3 controls oscillator voltage (e.g. eByte E22 module)
+	_hwConfig.USE_DIO3_ANT_SWITCH = false; // LORA DIO3 controls antenna (e.g. Insight SIP ISP4520 module)
+	_hwConfig.USE_RXEN_ANT_PWR = true;	   // RXEN is used as power for antenna switch
+
+	TimerConfig();
+
+	SX126xIoInit();
+
+	// After power on the sync word should be 2414. 4434 could be possible on a restart
+	// If we got something else, something is wrong.
+	uint16_t readSyncWord = 0;
+	SX126xReadRegisters(REG_LR_SYNCWORD, (uint8_t *)&readSyncWord, 2);
+
+	LOG_LIB("BRD", "SyncWord = %04X", readSyncWord);
+
+	// There could be a custom syncword, better test for 0xFFFF
+	// if ((readSyncWord == 0x2414) || (readSyncWord == 0x4434))
+	if (readSyncWord != 0xFFFF)
+	{
+#if defined NRF52_SERIES || defined ESP32 || defined ARDUINO_ARCH_RP2040 || defined ARDUINO_RAKWIRELESS_RAK11300
+		if (start_lora_task())
+		{
+			return 0;
+		}
+		else
+		{
+			return 1;
+		}
+#else
+		return 0;
+#endif
+	}
+	return 1;
+}
+
+#if defined NRF52_SERIES || defined ESP32 || defined ARDUINO_RAKWIRELESS_RAK11300
 void _lora_task(void *pvParameters)
 {
 	LOG_LIB("BRD", "LoRa Task started");
@@ -360,6 +431,7 @@ void _lora_task(void *pvParameters)
 	{
 		if (xSemaphoreTake(_lora_sem, portMAX_DELAY) == pdTRUE)
 		{
+			LOG_LIB("BRD", "LoRa task wakeup");
 			// Handle Radio events
 			Radio.BgIrqProcess();
 		}
@@ -374,11 +446,8 @@ bool start_lora_task(void)
 	xSemaphoreGive(_lora_sem);
 
 	xSemaphoreTake(_lora_sem, 10);
-#ifdef NRF52_SERIES
+
 	if (!xTaskCreate(_lora_task, "LORA", 4096, NULL, TASK_PRIO_NORMAL, &_loraTaskHandle))
-#else
-	if (!xTaskCreate(_lora_task, "LORA", 4096, NULL, 1, &_loraTaskHandle))
-#endif
 	{
 		return false;
 	}
@@ -386,7 +455,7 @@ bool start_lora_task(void)
 }
 #endif
 
-#ifdef ARDUINO_ARCH_RP2040
+#if defined ARDUINO_ARCH_RP2040 && not defined ARDUINO_RAKWIRELESS_RAK11300
 #include <mbed.h>
 #include <rtos.h>
 using namespace rtos;
@@ -427,7 +496,7 @@ bool start_lora_task(void)
 
 void lora_hardware_uninit(void)
 {
-#if defined NRF52_SERIES || defined ESP32
+#if defined NRF52_SERIES || defined ESP32 || defined ARDUINO_RAKWIRELESS_RAK11300
 	vTaskSuspend(_loraTaskHandle);
 
 #endif

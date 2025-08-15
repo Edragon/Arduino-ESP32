@@ -23,6 +23,13 @@
 #ifndef __RADIO_H__
 #define __RADIO_H__
 
+#if defined ARDUINO_RAKWIRELESS_RAK11300
+#include <FreeRTOS.h>
+#include <semphr.h>
+#include <task.h>
+#define TASK_PRIO_NORMAL 1
+#endif
+
 /*!
  * Radio driver supported modems
  */
@@ -345,10 +352,24 @@ struct Radio_s
      */
 	void (*SetPublicNetwork)(bool enable);
 	/*!
-     * \brief Gets the time required for the board plus radio to get out of sleep.[ms]
-     *
-     * \retval time Radio plus board wakeup time in ms.
-     */
+	 * \brief Sets a custom Sync-Word. Updates the sync byte.
+	 *
+	 * \remark ATTENTION, changes the LoRaWAN sync word as well. Use with care.
+	 *
+	 * \param  syncword 2 byte custom Sync-Word to be used
+	 */
+	void (*SetCustomSyncWord)(uint16_t syncword);
+	/*!
+	 * \brief Get Sync-Word.
+	 *
+	 * \retval  syncword current 2 byte custom Sync-Word
+	 */
+	uint16_t (*GetSyncWord)(void);
+	/*!
+	 * \brief Gets the time required for the board plus radio to get out of sleep.[ms]
+	 *
+	 * \retval time Radio plus board wakeup time in ms.
+	 */
 	uint32_t (*GetWakeupTime)(void);
 	/*!
      * \brief Process radio irq in background task (nRF52 & ESP32)
@@ -375,13 +396,21 @@ struct Radio_s
      */
 	void (*RxBoosted)(uint32_t timeout);
 	/*!
-     * \brief Sets the Rx duty cycle management parameters
-     *
-     * \remark Available on SX126x radios only.
-     *
-     * \param   rxTime        Structure describing reception timeout value
-     * \param   sleepTime     Structure describing sleep timeout value
-     */
+	 * \brief Enforce use of Low Datarate Optimization
+	 *
+	 * \remark Available on SX126x radios only.
+	 *
+	 * \param   enforce       True = Enforce Low DR optimization
+	 */
+	void (*EnforceLowDRopt)(bool enforce);
+	/*!
+	 * \brief Sets the Rx duty cycle management parameters
+	 *
+	 * \remark Available on SX126x radios only.
+	 *
+	 * \param   rxTime        Structure describing reception timeout value
+	 * \param   sleepTime     Structure describing sleep timeout value
+	 */
 	void (*SetRxDutyCycle)(uint32_t rxTime, uint32_t sleepTime);
 };
 
