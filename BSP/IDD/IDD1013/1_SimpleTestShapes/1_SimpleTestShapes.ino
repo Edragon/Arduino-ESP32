@@ -1,4 +1,3 @@
-
 // Example sketch which shows how to display some patterns
 // on a 64x32 LED matrix
 //
@@ -6,18 +5,15 @@
 #include <ESP32-HUB75-MatrixPanel-I2S-DMA.h>
 
 
-#define PANEL_RES_X 32      // Number of pixels wide of each INDIVIDUAL panel module. 
-#define PANEL_RES_Y 16     // Number of pixels tall of each INDIVIDUAL panel module.
+#define PANEL_RES_X 64      // Number of pixels wide of each INDIVIDUAL panel module. 
+#define PANEL_RES_Y 64     // Number of pixels tall of each INDIVIDUAL panel module.
 #define PANEL_CHAIN 1      // Total number of panels chained one to another
  
 //MatrixPanel_I2S_DMA dma_display;
 MatrixPanel_I2S_DMA *dma_display = nullptr;
 
-uint16_t myBLACK = dma_display->color565(0, 0, 0);
-uint16_t myWHITE = dma_display->color565(255, 255, 255);
-uint16_t myRED = dma_display->color565(255, 0, 0);
-uint16_t myGREEN = dma_display->color565(0, 255, 0);
-uint16_t myBLUE = dma_display->color565(0, 0, 255);
+// Declare colors but don't initialize them yet
+uint16_t myBLACK, myWHITE, myRED, myGREEN, myBLUE;
 
 
 
@@ -100,13 +96,17 @@ void setup() {
     PANEL_CHAIN    // Chain length
   );
 
-  //mxconfig.gpio.e = 18;
-  //mxconfig.clkphase = false;
-  //mxconfig.driver = HUB75_I2S_CFG::FM6126A;
-
   // Display Setup
   dma_display = new MatrixPanel_I2S_DMA(mxconfig);
   dma_display->begin();
+  
+  // Now initialize colors after dma_display is created
+  myBLACK = dma_display->color565(0, 0, 0);
+  myWHITE = dma_display->color565(255, 255, 255);
+  myRED = dma_display->color565(255, 0, 0);
+  myGREEN = dma_display->color565(0, 255, 0);
+  myBLUE = dma_display->color565(0, 0, 255);
+  
   dma_display->setBrightness8(90); //0-255
   dma_display->clearScreen();
   dma_display->fillScreen(myWHITE);
