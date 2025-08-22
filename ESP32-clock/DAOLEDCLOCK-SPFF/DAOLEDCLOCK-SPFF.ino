@@ -33,8 +33,14 @@
 #define LEDC_TIMER_13_BIT 13
 #define LED_PIN  2
 
+// Panel configuration for 64x64 single panel
+#define PANEL_RES_X 64      // Width of each panel module
+#define PANEL_RES_Y 64      // Height of each panel module
+
 // Color constants
 #define TFT_DARKGREY 0x7BEF
+#define TFT_SILVER 0xC618
+#define TFT_LIGHTGREY 0xD69A
 
 // Access Point mode IP
 IPAddress apIP(192, 168, 4, 1);
@@ -58,7 +64,7 @@ String scanNetworksID = "";    // Store scanned WiFi IDs
 boolean isnight = false;
 boolean soundon = true;
 boolean caidaion = true;       // Color animation enabled
-boolean twopannel = true;      // Two panel mode
+boolean twopannel = false;     // Changed to false for single panel
 boolean isDoubleBuffer = true;
 boolean isnightmode = true;
 int star1_x, star1_y;
@@ -123,13 +129,13 @@ String year_, month_, day_;
 byte temperature = 0;
 byte humidity = 0;              // DHT11 readings
 
-// Display colors (RGB565 format)
-uint16_t color = 0xf0b0;        // Time color
-uint16_t color2 = 0x780F;       // Date color
-uint16_t color3 = 0xf000;       // Lunar calendar color
-uint16_t color4 = 0xfff0;       // Temperature color
-uint16_t color5 = 0xFDA0;
-uint16_t colorl = 0xff00;       // Scroll bar color
+// Display colors (RGB565 format) - Fixed for better color balance
+uint16_t color = 0x07FF;        // Time color (cyan - better visibility)
+uint16_t color2 = 0xF81F;       // Date color (magenta)
+uint16_t color3 = 0xFFE0;       // Lunar calendar color (yellow)
+uint16_t color4 = 0x07E0;       // Temperature color (green)
+uint16_t color5 = 0xFD20;       // Orange color
+uint16_t colorl = 0xF800;       // Scroll bar color (red)
 
 // Web server configuration
 WebServer server(80);
@@ -138,7 +144,7 @@ const char* username = "admin";
 const char* userpass = "000000";
 
 // Display arrays
-uint16_t ledtab[128][64];
+uint16_t ledtab[64][64];   // Changed from 128x64 to 64x64
 uint16_t ledtab_old[64][64];
 int buffer_id = 0;
 int gif_i = 0;
@@ -153,7 +159,7 @@ const char* laohugif[] = {"/hlh1.bmp","/hlh2.bmp","/hlh1.bmp","/hlh2.bmp","/hlh1
 File fsUploadFile;
 
 // Panel configuration
-int PANEL_CHAIN = 2;            // Total number of panels chained one to another
+int PANEL_CHAIN = 1;            // Changed from 2 to 1 for single 64x64 panel
 
 // Clock registration system
 String macAddr = WiFi.macAddress();
@@ -234,7 +240,9 @@ para_value e_int;
 
 // Display functions (defined in other files)
 void initOLED();
+void initColors();
 void clearOLED();
+void testColors();
 void drawText(const char* text, int x, int y);
 void showTime();
 void onlyShowTime();
@@ -258,6 +266,9 @@ void refreshTQ(void* parameter);
 // File upload functions (defined in other files)
 void uploadFinish();
 void handleFileUpload();
+
+// NTP functions
+void sendNTPpacket(IPAddress &address);
 
 // WiFi icon bitmap (example - needs to be defined properly)
 extern const uint8_t wifi[];
@@ -313,11 +324,9 @@ void myconfig() {
   isDoubleBuffer = EEPROM.read(12 + len_city + len_key);
   twopannel = EEPROM.read(13 + len_city + len_key);
   
-  if(twopannel){
-    PANEL_CHAIN = 2;
-  } else {
-    PANEL_CHAIN = 1;
-  }
+  // Force single panel configuration
+  twopannel = false;
+  PANEL_CHAIN = 1;
   
   isnightmode = EEPROM.read(14 + len_city + len_key);
   
@@ -679,12 +688,28 @@ float sensor_Read() {
 void setup()
 {
   Serial.begin(115200);
+  
+  // Add delay for system stabilization
+  delay(2000);
+  Serial.println("Starting ESP32 Clock...");
+  
   myconfig();
+  
+  // Initialize display first with error checking
+  Serial.println("Initializing display...");
   initOLED();
+  
+  // Wait for display to fully initialize
+  delay(1000);
+  
+  // Show a simple message on display to verify it's working
+  drawText("Starting...", 0, 0);
+  delay(2000);
+  
   int i = 0;
   
   // Connect to WiFi
-  drawText("Try to connect WIFI!", 64, 0);
+  drawText("Try to connect WIFI!", 0, 0);
 
   connectToWiFi(15);   //apConfig();
 
@@ -692,9 +717,12 @@ void setup()
     updateServer();
     clearOLED();
     Serial.println(" CONNECTED");
-    drawText("CONNECTED!", 64, 0);
+    drawText("CONNECTED!", 0, 0);
     drawText(WiFi.localIP().toString().c_str(),0, 20);
     Serial.print(WiFi.localIP());
+    
+    // Add delay before network operations
+    delay(2000);
     
     // Initialize and get the time
     setSyncProvider(getNtpTime);
@@ -702,93 +730,239 @@ void setup()
     year_ = String(year1);
     month_ = String(month1);
     day_ = String(day1);
+    
+    // Try to get lunar calendar and weather AFTER system is stable
+    Serial.println("Getting lunar calendar...");
+    unsigned long t_nl_start = millis();
+    size_t heap_nl_before = ESP.getFreeHeap();
     getNongli( year_, month_, day_);
+    Serial.print("DEBUG: getNongli() took "); Serial.print(millis() - t_nl_start);
+    Serial.print(" ms, heap delta: "); Serial.println((int)ESP.getFreeHeap() - (int)heap_nl_before);
+    Serial.print("DEBUG: jieri='"); Serial.print(jieri); Serial.print("' len="); Serial.println(jieri.length());
+    Serial.print("DEBUG: china_month="); Serial.println(china_month ? china_month : "<null>");
+    Serial.print("DEBUG: china_day="); Serial.println(china_day ? china_day : "<null>");
+    Serial.print("DEBUG: jieqi="); Serial.println(jieqi ? jieqi : "<null>");
+    
+    delay(1000); // Wait between operations
+    
+    Serial.println("Getting weather data...");
+    unsigned long t_w_start = millis();
+    size_t heap_w_before = ESP.getFreeHeap();
     getWeather();
+    Serial.print("DEBUG: getWeather() took "); Serial.print(millis() - t_w_start);
+    Serial.print(" ms, heap delta: "); Serial.println((int)ESP.getFreeHeap() - (int)heap_w_before);
+    Serial.print("DEBUG: wea_code="); Serial.print(wea_code);
+    Serial.print(", wea_temp1='"); Serial.print(wea_temp1); Serial.print("', wea_hm="); Serial.println(wea_hm);
+    
+    delay(1000); // Wait between operations
+    
+    Serial.println("Getting 3-day weather...");
+    unsigned long t_w3_start = millis();
+    size_t heap_w3_before = ESP.getFreeHeap();
     get3DayWeather();
-//    getBirth();
-//    dht11read();
+    Serial.print("DEBUG: get3DayWeather() took "); Serial.print(millis() - t_w3_start);
+    Serial.print(" ms, heap delta: "); Serial.println((int)ESP.getFreeHeap() - (int)heap_w3_before);
+    Serial.print("DEBUG: day1_date='"); Serial.print(day1_date); Serial.print("', min/max="); Serial.print(tem_day1_min); Serial.print("/"); Serial.println(tem_day1_max);
+    Serial.print("DEBUG: day2_date='"); Serial.print(day2_date); Serial.print("', min/max="); Serial.print(tem_day2_min); Serial.print("/"); Serial.println(tem_day2_max);
+    Serial.print("DEBUG: day3_date='"); Serial.print(day3_date); Serial.print("', min/max="); Serial.print(tem_day3_min); Serial.print("/"); Serial.println(tem_day3_max);
+    
     showTime();
-    //   drawHanziS(0,9,china_year,0xff0a);
   }
   
   SPIFFS.begin();
+  Serial.println("DEBUG: Starting SPIFFS init (with format on fail)...");
   while (!SPIFFS.begin(true))
   {
     Serial.print("...");
   }
   Serial.println("SPIFFS OK!");
+  Serial.print("DEBUG: SPIFFS total: "); Serial.print(SPIFFS.totalBytes());
+  Serial.print(", used: "); Serial.println(SPIFFS.usedBytes());
+  Serial.print("DEBUG: Heap after SPIFFS: "); Serial.println(ESP.getFreeHeap());
+  Serial.print("DEBUG: dma_display ptr: "); Serial.println((uint32_t)dma_display, HEX);
+  Serial.print("DEBUG: PANEL_CHAIN="); Serial.print(PANEL_CHAIN);
+  Serial.print(", isDoubleBuffer="); Serial.print(isDoubleBuffer);
+  Serial.print(", twopannel="); Serial.println(twopannel);
+  
+  // Only test colors after everything else is stable
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("System stable - skipping color test to prevent crashes");
+    // testColorsSimple(); // COMMENTED OUT - causes Guru Meditation Error
+    delay(1000);
+    clearOLED();
+    Serial.print("DEBUG: Setup complete, entering loop - time ");
+    Serial.print(hou); Serial.print(":"); Serial.print(minu); Serial.print(":"); Serial.println(sec);
+    Serial.print("DEBUG: Heap before loop: "); Serial.println(ESP.getFreeHeap());
+  }
 }
 
 void loop()
 {
+  static unsigned long loopCounter = 0;
+  loopCounter++;
+  
+  // Extra verbose debug for first 10 loops to isolate crashes
+  static int dbgLoops = 0; dbgLoops++;
+  bool dbg = dbgLoops <= 10;
+  if (dbg) { Serial.print("DBG["), Serial.print(dbgLoops), Serial.println("]: loop begin"); }
+  
+  // Print loop debug info every 10 loops (every 5 seconds approximately)
+  if (loopCounter % 10 == 0) {
+    Serial.print("DEBUG: Main loop #");
+    Serial.print(loopCounter);
+    Serial.print(" - WiFi status: ");
+    Serial.print(WiFi.status() == WL_CONNECTED ? "CONNECTED" : "DISCONNECTED");
+    Serial.print(", Free heap: ");
+    Serial.print(ESP.getFreeHeap());
+    Serial.print(", Night mode: ");
+    Serial.println(isnightmode ? "ON" : "OFF");
+  }
+  
+  if (dbg) Serial.println("DBG: before server.handleClient()");
   server.handleClient();
+  if (dbg) Serial.println("DBG: after server.handleClient()");
+  
+  // Add stack monitoring to catch overflow early
+  UBaseType_t stackHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
+  static unsigned long lastStackCheck = 0;
+  if (millis() - lastStackCheck > 5000) { // Check every 5 seconds
+    Serial.print("Stack high water mark: ");
+    Serial.println(stackHighWaterMark);
+    lastStackCheck = millis();
+  }
+  if (dbg) { Serial.print("DBG: after stack check, HWM="); Serial.println(stackHighWaterMark); }
+  
+  // Memory monitoring - add heap check
+  static unsigned long lastHeapCheck = 0;
+  if (millis() - lastHeapCheck > 10000) { // Check every 10 seconds
+    Serial.print("Free heap: ");
+    Serial.println(ESP.getFreeHeap());
+    lastHeapCheck = millis();
+  }
+  if (dbg) { Serial.print("DBG: after heap check, heap="); Serial.println(ESP.getFreeHeap()); }
+  
 //  dht11read();
   
   // Refresh brightness
+  if (dbg) Serial.println("DBG: brightness/night check");
   if (sensor_Read() < 1.2) {
     nightMode();
   } else {
     isnight = false;
   }
+  if (dbg) Serial.println("DBG: after night check");
   
   // Sync time every hour
   if ( minu == 0 && sec == 0) {
+    if (dbg) Serial.println("DBG: syncing time (minu==0 && sec==0)");
+    Serial.println("Syncing time...");
     setSyncProvider(getNtpTime);
     GetTime();
     year_ = String(year1);
     month_ = String(month1);
     day_ = String(day1);
-    getNongli( year_, month_, day_);
+    // getNongli( year_, month_, day_); // Temporarily disabled
   }
   
-  // Update every 2 minutes (except every 10 minutes)
-  if (minu % 2 == 0 && sec == 0 && minu%10!=0) {
+  // Reduce network operations frequency to prevent memory issues
+  // Update every 5 minutes instead of 2 (except every 20 minutes)
+  if (minu % 5 == 0 && sec == 0 && minu%20!=0) {
 //      getBirth();
   } 
   
-  // Update every 10 seconds
-  if(sec%10==0){
+  // Update every 30 seconds instead of 10
+  if(sec%30==0){
 //      getConf();
   }
   
-  setBrightness(sensor_Read());
-  cleanTab();
+  float v = sensor_Read();
+  if (dbg) { Serial.print("DBG: before setBrightness, v="); Serial.print(v); Serial.print(", light="); Serial.println(light); }
+  setBrightness(v);
+  if (dbg) Serial.println("DBG: after setBrightness");
   
+  if (dbg) Serial.println("DBG: before cleanTab()");
+  cleanTab();
+  if (dbg) Serial.println("DBG: after cleanTab()");
+  
+  if (dbg) {
+    Serial.print("DBG: WiFi.status()="); Serial.print(WiFi.status());
+    Serial.print(", netpage_wait="); Serial.println(netpage_wait);
+  }
   if (WiFi.status() == WL_CONNECTED || netpage_wait > 50) {
-    xTaskCreate(
-      refreshData,
-      "refreshData",
-      100000,
-      NULL,
-      1,
-      NULL);
+    Serial.print("DEBUG: Entering main display logic - WiFi connected or timeout exceeded (netpage_wait=");
+    Serial.print(netpage_wait);
+    Serial.println(")");
+    
+    // Check available memory before creating tasks
+    if (ESP.getFreeHeap() > 100000) { // Only create tasks if we have enough memory
+      Serial.println("DEBUG: Sufficient memory - creating refreshData task");
+      // REDUCE TASK STACK SIZE to prevent stack overflow
+      BaseType_t rc1 = xTaskCreate(
+        refreshData,
+        "refreshData",
+        4096,        // Reduced from 100000 to 4096 bytes
+        NULL,
+        1,
+        NULL);
+      Serial.print("DEBUG: xTaskCreate(refreshData) rc="); Serial.println(rc1);
+    } else {
+      Serial.print("DEBUG: Warning: Low memory (");
+      Serial.print(ESP.getFreeHeap());
+      Serial.println(" bytes), skipping task creation");
+    }
       
     if(isnightmode){
       if (hour() > 5 && hour() < 23) {
-        // Update weather
-        if (minu % 10 == 0 && sec == 0 && minu!=0) {
-         xTaskCreate(refreshTQ,"refreshTQ",10000,NULL,1,NULL);
+        // Update weather with reduced frequency to prevent memory issues
+        if (minu % 20 == 0 && sec == 0 && minu!=0 && ESP.getFreeHeap() > 80000) { // Check memory
+         BaseType_t rc2 = xTaskCreate(refreshTQ,"refreshTQ",4096,NULL,1,NULL); // Reduced stack size
+         Serial.print("DEBUG: xTaskCreate(refreshTQ) rc="); Serial.println(rc2);
         } 
+        if (dbg) Serial.println("DBG: before GetTime()");
         GetTime();
+        if (dbg) { Serial.print("DBG: after GetTime "); Serial.print(hou); Serial.print(":"); Serial.print(minu); Serial.print(":"); Serial.println(sec); }
+        Serial.print("DEBUG: Calling showTime() - DAY MODE at ");
+        Serial.print(hou);
+        Serial.print(":");
+        Serial.print(minu);
+        Serial.print(":");
+        Serial.println(sec);
         showTime();
+        Serial.println("DEBUG: showTime() completed - calling showTigger()");
         showTigger();
+        Serial.println("DEBUG: showTigger() completed");
       } else { // Night mode - only show time
-        if(twopannel){
-          screen_num=0;
-        onlyShowTime();
-        }else{
-         screen_num=0;
-         onlyShowTime2();
-        }
+        screen_num=0;
+        Serial.print("DEBUG: Calling onlyShowTime2() - NIGHT MODE at ");
+        Serial.print(hou);
+        Serial.print(":");
+        Serial.print(minu);
+        Serial.print(":");
+        Serial.println(sec);
+        onlyShowTime2();  // Use onlyShowTime2 for single panel
+        Serial.println("DEBUG: onlyShowTime2() completed");
         isnight=true;
       }
     } else {
+      if (dbg) Serial.println("DBG: before GetTime() (no night mode)");
       GetTime();
+      if (dbg) { Serial.print("DBG: after GetTime "); Serial.print(hou); Serial.print(":"); Serial.print(minu); Serial.print(":"); Serial.println(sec); }
+      Serial.print("DEBUG: Calling showTime() - NO NIGHT MODE at ");
+      Serial.print(hou);
+      Serial.print(":");
+      Serial.print(minu);
+      Serial.print(":");
+      Serial.println(sec);
       showTime();
+      Serial.println("DEBUG: showTime() completed - calling showTigger()");
       showTigger();
+      Serial.println("DEBUG: showTigger() completed");
     }
+    Serial.println("DEBUG: Calling fillScreenTab() to update display");
     fillScreenTab();
+    Serial.println("DEBUG: fillScreenTab() completed - display updated");
   } else {
+    Serial.println("DEBUG: WiFi not connected - showing WiFi icon");
     drawBit(116, 52, wifi, 12, 12, TFT_DARKGREY);
     connectToWiFi(15); 
   }
@@ -796,5 +970,6 @@ void loop()
   if (netpage_wait < 52) {
     netpage_wait++;
   }
-  delay(350);
+  if (dbg) Serial.println("DBG: end of loop, delay 500ms");
+  delay(500); // Increased from 350ms to 500ms to reduce CPU load and memory pressure
 }

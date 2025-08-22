@@ -42,7 +42,7 @@ void smartConfig()
       Serial.println("SmartConfig Success");
       Serial.printf("SSID:%s\r\n", WiFi.SSID().c_str());
       Serial.printf("PSW:%s\r\n", WiFi.psk().c_str());
-      WiFi.setAutoConnect(true);  // 设置自动连接
+      WiFi.setAutoReconnect(true);  // 设置自动连接
       ESP.restart();
       break;
     }

@@ -42,7 +42,7 @@ void smartConfig()
       Serial.println("SmartConfig Success");
       Serial.printf("SSID:%s\r\n", WiFi.SSID().c_str());
       Serial.printf("PSW:%s\r\n", WiFi.psk().c_str());
-      WiFi.setAutoConnect(true);  // 设置自动连接
+      WiFi.setAutoReconnect(true);  // 设置自动连接
       ESP.restart();
       break;
     }
@@ -119,7 +119,7 @@ void connectToWiFi(int timeOut_s){
       Serial.println("进入connectToWiFi()函数");
       //设置为STA模式并连接WIFI
       WiFi.mode(WIFI_STA);
-      WiFi.setAutoConnect(true);//设置自动连接
+      WiFi.setAutoReconnect(true);//设置自动连接
       //用字符串成员函数c_str()生成一个const char*指针，指向以空字符终止的数组,即获取该字符串的指针。
       if(wifi_ssid !=""){
           Serial.println("用web配置信息连接.");

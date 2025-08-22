@@ -1,25 +1,34 @@
-
-// Example sketch which shows how to display some patterns
-// on a 64x32 LED matrix
-//
-
-
+// LED Matrix OLED Driver Functions
+// Handles display output and color management
 
 //MatrixPanel_I2S_DMA dma_display;
 
-uint16_t myBLACK = dma_display->color565(0, 0, 0);
-uint16_t myWHITE = dma_display->color565(255, 255, 255);
-uint16_t myRED = dma_display->color565(255, 0, 0);
-uint16_t myGREEN = dma_display->color565(0, 255, 0);
-uint16_t myBLUE = dma_display->color565(0, 0, 255);
+// Define color constants using proper color565 conversion
+// Note: These will be initialized in initOLED() after dma_display is created
+uint16_t myBLACK;
+uint16_t myWHITE;
+uint16_t myRED;
+uint16_t myGREEN;
+uint16_t myBLUE;
+
+// Initialize color constants (called after dma_display creation)
+void initColors() {
+  myBLACK = dma_display->color565(0, 0, 0);
+  myWHITE = dma_display->color565(255, 255, 255);
+  myRED = dma_display->color565(255, 0, 0);
+  myGREEN = dma_display->color565(0, 255, 0);
+  myBLUE = dma_display->color565(0, 0, 255);
+}
 void cleanTab() {
-  for (int i = 0; i < 128; i++) {
+  for (int i = 0; i < 64; i++) {      // Changed from 128 to 64
     for (int j = 0; j < 64; j++) {
       ledtab[i][j] = 0x0000;
     }
   }
 }
 void fillTab(int x, int y, uint16_t color) {
+  // Bounds protection for single 64x64 panel
+  if (x < 0 || x >= 64 || y < 0 || y >= 64) return;
   if(!isnight){
       ledtab[x][y] = color;
   }else{
@@ -30,30 +39,11 @@ void fillScreenTab() {
 //  for (int i = 0; i < 64; i++) {
 //    ledtab[64][0 + i] = TFT_LIGHTGREY; //分隔线
 //  }
-  if(twopannel){
-  if (minu % 2 == 0 && !isnight) {
-    screen_num = 0;
-  } else if(!isnight){
-    screen_num = 64;
-  }
-  }else{
-    screen_num = 0;
-  }
-  for (int i = 0; i < 128; i++) {
+  screen_num = 0;  // Always 0 for single panel
+  
+  for (int i = 0; i < 64; i++) {      // Changed from 128 to 64
     for (int j = 0; j < 64; j++) {
-      if(twopannel){
-      if (i < 64) {
-
-        dma_display->drawPixel(i + screen_num, j, ledtab[i][j]);
-
-      } else {
-
-        dma_display->drawPixel(i - screen_num, j, ledtab[i][j]);
-
-      }
-      }else{
-        dma_display->drawPixel(i + screen_num, j, ledtab[i][j]);
-      }
+      dma_display->drawPixel(i, j, ledtab[i][j]);
     }
   }
 }
@@ -222,32 +212,69 @@ void drawText(String words, int x, int y)
   dma_display->setTextColor(dma_display->color565(255, 255, 0));
   dma_display->print(words);
 }
+
+void drawText(const char* text, int x, int y)
+{
+  dma_display->setCursor(x, y);
+  dma_display->setTextColor(dma_display->color565(255, 255, 0));
+  dma_display->print(text);
+}
 void clearOLED() {
   dma_display->clearScreen();
 }
 
 void initOLED() {
 
-  // Module configuration
+  // Module configuration for 64x64 single panel - CONSERVATIVE SETTINGS
   HUB75_I2S_CFG mxconfig(
-    PANEL_RES_X,   // module width
-    PANEL_RES_Y,   // module height
-    PANEL_CHAIN    // Chain length
+    PANEL_RES_X,   // module width (64)
+    PANEL_RES_Y,   // module height (64)
+    PANEL_CHAIN    // Chain length (1)
   );
 
-  mxconfig.gpio.e = 32;
-  mxconfig.clkphase = false;
-  mxconfig.driver = HUB75_I2S_CFG::FM6126A;
-
-  // Display Setup
+  // CONSERVATIVE GPIO settings to prevent memory corruption
+  mxconfig.gpio.e = 32;           // E pin for 64x64 panels
+  
+  // Use SHIFTREG (most compatible) instead of specific drivers
+  mxconfig.driver = HUB75_I2S_CFG::SHIFTREG;  // Most compatible generic driver
+  
+  // VERY CONSERVATIVE timing to prevent memory issues
+  mxconfig.i2sspeed = HUB75_I2S_CFG::HZ_8M;   // Lower speed for stability
+  mxconfig.clkphase = false;                   // Standard clock phase
+  
+  // Display Setup with comprehensive error checking
   dma_display = new MatrixPanel_I2S_DMA(mxconfig);
-  dma_display->begin();
-  dma_display->setBrightness8(50); //0-255
+  
+  if (!dma_display) {
+    Serial.println("ERROR: Failed to create display object!");
+    while(1) { delay(1000); } // Stop execution if display fails
+  }
+  
+  bool initResult = dma_display->begin();
+  if (!initResult) {
+    Serial.println("ERROR: Display initialization failed!");
+    while(1) { delay(1000); } // Stop execution if display fails
+  }
+  
+  // Wait for display to stabilize
+  delay(100);
+  
+  // Initialize color constants after display creation
+  initColors();
+  
+  // Very low brightness to reduce power consumption and interference
+  dma_display->setBrightness8(20); // Very low brightness
   dma_display->clearScreen();
   dma_display->fillScreen(myBLACK);
+  
+  Serial.println("Display initialized - SHIFTREG driver, conservative settings");
 }
 void setBrightness(int dianya) {
   dma_display->setBrightness8(light*dianya); //0-255
+}
+
+void setBrightness(float voltage) {
+  dma_display->setBrightness8(light*voltage); //0-255
 }
 void displayNumber(int c, int x, int y, uint16_t color)
 {
@@ -433,4 +460,63 @@ void drawHanziS(int32_t x, int32_t y, const char str[], uint32_t color) {
     drawHz(x0, y, b, color);
     x0 += 11;
   }
+}
+// Simple color test function - less memory intensive
+void testColorsSimple() {
+  Serial.println("Testing basic colors...");
+  
+  // Clear display
+  dma_display->clearScreen();
+  delay(1000);
+  
+  // Test one color at a time to avoid memory stress
+  Serial.println("Red test...");
+  dma_display->fillScreen(myRED);
+  delay(2000);
+  
+  Serial.println("Green test...");
+  dma_display->fillScreen(myGREEN);
+  delay(2000);
+  
+  Serial.println("Blue test...");
+  dma_display->fillScreen(myBLUE);
+  delay(2000);
+  
+  Serial.println("White test...");
+  dma_display->fillScreen(myWHITE);
+  delay(2000);
+  
+  // Clear to black
+  dma_display->fillScreen(myBLACK);
+  
+  Serial.println("Simple color test completed!");
+}
+
+// Test function to verify color output - call this in setup() for debugging
+void testColors() {
+  Serial.println("Testing display colors...");
+  
+  // Clear display
+  dma_display->clearScreen();
+  delay(500);
+  
+  // Test basic colors
+  dma_display->fillRect(0, 0, 16, 16, myRED);     // Top-left: Red
+  dma_display->fillRect(16, 0, 16, 16, myGREEN);  // Top-middle: Green  
+  dma_display->fillRect(32, 0, 16, 16, myBLUE);   // Top-right: Blue
+  dma_display->fillRect(48, 0, 16, 16, myWHITE);  // Top-far right: White
+  
+  // Test RGB565 color values
+  dma_display->fillRect(0, 16, 16, 16, 0xF800);   // Pure Red (RGB565)
+  dma_display->fillRect(16, 16, 16, 16, 0x07E0);  // Pure Green (RGB565)
+  dma_display->fillRect(32, 16, 16, 16, 0x001F);  // Pure Blue (RGB565)
+  dma_display->fillRect(48, 16, 16, 16, 0xFFE0);  // Yellow (RGB565)
+  
+  // Test mixed colors
+  dma_display->fillRect(0, 32, 16, 16, 0xF81F);   // Magenta
+  dma_display->fillRect(16, 32, 16, 16, 0x07FF);  // Cyan
+  dma_display->fillRect(32, 32, 16, 16, 0xFDA0);  // Orange
+  dma_display->fillRect(48, 32, 16, 16, 0x8410);  // Gray
+  
+  Serial.println("Color test pattern displayed. Check your panel!");
 }

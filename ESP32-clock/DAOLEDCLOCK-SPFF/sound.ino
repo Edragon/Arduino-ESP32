@@ -114,9 +114,8 @@ void common_play() {
     // to calculate the note duration, take one second divided by the note type.
     //e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
     int noteDuration = ( 800 / 8 ) * noteDurations[thisNote];
-    ledcSetup(LEDC_CHANNEL_0, melody[thisNote] , LEDC_TIMER_13_BIT);
-    ledcAttachPin(LED_PIN, LEDC_CHANNEL_0);
-    ledcWrite(LEDC_CHANNEL_0, 50);
+    ledcAttach(LED_PIN, melody[thisNote], LEDC_TIMER_13_BIT);
+    ledcWrite(LED_PIN, 50);
     delay(noteDuration * 2.30);
   }
   ledcDetach(LED_PIN);

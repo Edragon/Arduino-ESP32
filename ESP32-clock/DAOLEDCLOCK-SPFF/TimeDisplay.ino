@@ -95,29 +95,23 @@ void refreshTQ(void * parameter) {
   vTaskDelete(NULL);
 }
 void showJieri(void * parameter) {
-  if (sec % 20 < 15) {
-    drawHanziS(0+scroll_x, -1 + yy1, jieri.c_str(), color3);
-    if(scroll_x>-60&&jieri.length()>15){
-      scroll_x-=4;
-    }else{
-      scroll_x=0;
-    }
-    //  color3=1;
+  // Minimize stack usage - avoid complex operations
+  bool show_festival = (sec % 20 < 15);
+  
+  if (show_festival && jieri.length() > 0) {
+    // Simple festival display without scrolling to save stack
+    drawHanziS(0, -1 + yy1, jieri.c_str(), color3);
   } else {
-    scroll_x=0;
+    // Show date - simplified without complex calculations
     displayNumbers2(year1, 21, -2 + yy1, color2);
-    //dma_display->setCursor(27, 3 + yy1);
-    //dma_display->setTextSize(1);
-    //dma_display->print(year1);
-    //dma_display->print(".");
     drawBit(28, yy1 - 2, dot, 7, 14, color2);
+    
     if (month1 < 10) {
       displayNumbers2(0, 32, -2 + yy1, color2);
     }
     displayNumbers2(month1, 39, -2 + yy1, color2);
-    //dma_display->setCursor(45, 3 + yy1);
-    //dma_display->print(".");
-    drawBit(46,  yy1 - 2, dot, 7, 14, color2);
+    drawBit(46, yy1 - 2, dot, 7, 14, color2);
+    
     if (day1 < 10) {
       displayNumbers2(0, 49, -2 + yy1, color2);
     }
@@ -128,13 +122,8 @@ void showJieri(void * parameter) {
 void showTime() {
   const char* v_week = showWeek(week);
   if (minu == 0 && sec == 0 && soundon && hou < 21 && hou > 7) {
-    xTaskCreate(
-      housound,   /* Task function. */
-      "housound", /* String with name of task. */
-      10000,     /* Stack size in bytes. */
-      NULL,      /* Parameter passed as input of the task */
-      1,         /* Priority of the task. */
-      NULL);     /* Task handle. */
+    // Execute sound directly instead of creating task to prevent stack overflow
+    common_play();
   }
   Serial.print("节日长度：");
   Serial.println(jieri.length());
@@ -165,14 +154,28 @@ void showTime() {
     displayNumbers2(day1, 56, -2 + yy1, color2);
     //显示节日
   } else {
-
-    xTaskCreate(
-      showJieri,   /* Task function. */
-      "showJieri", /* String with name of task. */
-      10000,     /* Stack size in bytes. */
-      NULL,      /* Parameter passed as input of the task */
-      1,         /* Priority of the task. */
-      NULL);     /* Task handle. */
+    // Execute festival display directly instead of creating task
+    bool show_festival = (sec % 20 < 15);
+    
+    if (show_festival && jieri.length() > 0) {
+      // Simple festival display without scrolling to save stack
+      drawHanziS(0, -1 + yy1, jieri.c_str(), color3);
+    } else {
+      // Show date - simplified without complex calculations
+      displayNumbers2(year1, 21, -2 + yy1, color2);
+      drawBit(28, yy1 - 2, dot, 7, 14, color2);
+      
+      if (month1 < 10) {
+        displayNumbers2(0, 32, -2 + yy1, color2);
+      }
+      displayNumbers2(month1, 39, -2 + yy1, color2);
+      drawBit(46, yy1 - 2, dot, 7, 14, color2);
+      
+      if (day1 < 10) {
+        displayNumbers2(0, 49, -2 + yy1, color2);
+      }
+      displayNumbers2(day1, 56, -2 + yy1, color2);
+    }
   }
 
 
@@ -264,13 +267,15 @@ void showTigger() {
   }
   for (int i = 0; i < starnum; i++) {
     //dma_display->drawPixel(star_x[i], star_y[i], star_color[i]);
-    fillTab(star_x[i], star_y[i], star_color[i]);
-    fillTab(star_x[i] + 1, star_y[i], star_color[i]);
-    fillTab(star_x[i] - 1, star_y[i], star_color[i]);
+    int sx = star_x[i]; if (sx < 0) sx = 0; if (sx > 63) sx = 63;
+    int sy = star_y[i]; if (sy < 0) sy = 0; if (sy > 63) sy = 63;
+    fillTab(sx, sy, star_color[i]);
+    if (sx+1 <= 63) fillTab(sx + 1, sy, star_color[i]);
+    if (sx-1 >= 0) fillTab(sx - 1, sy, star_color[i]);
     //  fillTab(star_x[i]+2,star_y[i],star_color[i]);
     //  fillTab(star_x[i]-2,star_y[i],star_color[i]);
-    fillTab(star_x[i], star_y[i] + 1, star_color[i]);
-    fillTab(star_x[i], star_y[i] - 1, star_color[i]);
+    if (sy+1 <= 63) fillTab(sx, sy + 1, star_color[i]);
+    if (sy-1 >= 0) fillTab(sx, sy - 1, star_color[i]);
     //  fillTab(star_x[i],star_y[i]+2,star_color[i]);
     //  fillTab(star_x[i],star_y[i]-2,star_color[i]);
   }

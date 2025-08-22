@@ -1,6 +1,19 @@
 
 //***send http 获取天气
 void getWeather() {
+  // TEMPORARILY DISABLED to prevent memory corruption
+  Serial.println("getWeather() disabled to prevent memory issues");
+  
+  // Set some default values to prevent crashes
+  strcpy(wea_temp1, "25");
+  wea_code = 100; // Sunny
+  wind_level = 1;
+  wea_hm = 50;
+  
+  Serial.println("Using default weather values");
+  return;
+  
+  /*
   HTTPClient http;
   // We now create a URI for the request
   if(zx_key.length() > 5 && city.length() > 0){
@@ -85,9 +98,34 @@ void getWeather() {
   // String input;
   }
 
+  */
 }
+
 //获取未来3天天气
 void get3DayWeather() {
+  // TEMPORARILY DISABLED to prevent memory corruption
+  Serial.println("get3DayWeather() disabled to prevent memory issues");
+  
+  // Set some default values to prevent crashes
+  strcpy(tem_day1_min, "18");
+  strcpy(tem_day1_max, "28");
+  strcpy(tem_day2_min, "19");
+  strcpy(tem_day2_max, "29");
+  strcpy(tem_day3_min, "20");
+  strcpy(tem_day3_max, "30");
+  
+  wea_code_day1 = 100;
+  wea_code_night1 = 100;
+  wea_code_day2 = 100;
+  wea_code_night2 = 100;
+  wea_code_day3 = 100;
+  wea_code_night3 = 100;
+  
+  Serial.println("Using default 3-day weather values");
+  return;
+  
+  /*
+  // Original code commented out to prevent memory corruption
   HTTPClient http;
   // We now create a URI for the request
   if (zx_key.length() > 5 && city.length() > 0) {
@@ -197,5 +235,5 @@ void get3DayWeather() {
 
     // String input;
   }
-
+  */
 }

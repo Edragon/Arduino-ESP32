@@ -1,5 +1,11 @@
 //获取API里的纪念日
 void getBirth() {
+  // TEMPORARILY DISABLED to prevent memory corruption
+  Serial.println("getBirth() disabled to prevent memory issues");
+  return;
+  
+  /*
+  // Original code commented out to prevent memory corruption
   HTTPClient http;
   // We now create a URI for the request
   String url = "http://82.157.26.5/getShowText?clockid=" + macAddr;
@@ -32,11 +38,19 @@ void getBirth() {
       jieri = DATA_item_Title;
     }
   }
+  */
 }
+
 /*
    获取配置信息
 */
 void getConf() {
+  // TEMPORARILY DISABLED to prevent memory corruption
+  Serial.println("getConf() disabled to prevent memory issues");
+  return;
+  
+  /*
+  // Original code commented out to prevent memory corruption
   HTTPClient http;
   String url = "http://82.157.26.5/index?clockid=" + macAddr;
   http.begin(url.c_str());
@@ -107,4 +121,5 @@ void getConf() {
       saveconfig();
     }
   }
+  */
 }
