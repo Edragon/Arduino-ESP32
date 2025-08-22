@@ -247,17 +247,18 @@ void showTigger() {
   //显示老虎
   showlaohu();
  if(soundon){
-    drawBit(65, 52, laba, 12, 12, TFT_GREEN);
+    // ensure within 64x64
+    if (65 < 64 && 52 < 64) drawBit(65, 52, laba, 12, 12, TFT_GREEN);
   }else{
-    drawBit(65, 52, laba, 12, 12, TFT_DARKGREY);
+    if (65 < 64 && 52 < 64) drawBit(65, 52, laba, 12, 12, TFT_DARKGREY);
   }
-  //显示wifi图标
-    drawBit(116, 52, wifi, 12, 12, TFT_GREEN);
+  //显示wifi图标 (x=116 is off-screen for 64x64, so skip)
+    // if (116 < 64 && 52 < 64) drawBit(116, 52, wifi, 12, 12, TFT_GREEN);
   //显示光点
   if (sec % 2 == 0 && isGeneralStar) {
     for (int i = 0; i < starnum; i++) {
-      star_x[i] = 64 + rand() % 63;
-      star_y[i] = rand() % 63;
+      star_x[i] = rand() % 64;
+      star_y[i] = rand() % 64;
       star_color[i] = rand() % 0xffff;
     }
     isGeneralStar = !isGeneralStar;
@@ -266,22 +267,17 @@ void showTigger() {
     isGeneralStar = true;
   }
   for (int i = 0; i < starnum; i++) {
-    //dma_display->drawPixel(star_x[i], star_y[i], star_color[i]);
     int sx = star_x[i]; if (sx < 0) sx = 0; if (sx > 63) sx = 63;
     int sy = star_y[i]; if (sy < 0) sy = 0; if (sy > 63) sy = 63;
     fillTab(sx, sy, star_color[i]);
     if (sx+1 <= 63) fillTab(sx + 1, sy, star_color[i]);
     if (sx-1 >= 0) fillTab(sx - 1, sy, star_color[i]);
-    //  fillTab(star_x[i]+2,star_y[i],star_color[i]);
-    //  fillTab(star_x[i]-2,star_y[i],star_color[i]);
     if (sy+1 <= 63) fillTab(sx, sy + 1, star_color[i]);
     if (sy-1 >= 0) fillTab(sx, sy - 1, star_color[i]);
-    //  fillTab(star_x[i],star_y[i]+2,star_color[i]);
-    //  fillTab(star_x[i],star_y[i]-2,star_color[i]);
   }
   
   }else{
-    if(gif_i>17){gif_i=0;}
+    if(gif_i>=(int)LAOHU_GIF_COUNT){gif_i=0;}
      show3dayWeather();
   }
 }

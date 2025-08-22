@@ -156,6 +156,7 @@ boolean isGeneralStar = true;
 
 // Animation arrays
 const char* laohugif[] = {"/hlh1.bmp","/hlh2.bmp","/hlh1.bmp","/hlh2.bmp","/hlh1.bmp","/hlh2.bmp","/hlh1.bmp","/hlh2.bmp","/hlh1.bmp","/hlh2.bmp","/hlh1.bmp","/hlh2.bmp"}; // Tiger animation
+const size_t LAOHU_GIF_COUNT = sizeof(laohugif) / sizeof(laohugif[0]);
 File fsUploadFile;
 
 // Panel configuration

@@ -31,49 +31,48 @@ void drawBmp(const char *filename, int16_t x, int16_t y) {
   }
 
   uint32_t seekOffset;
-  uint16_t w, h, row, col;
+  uint32_t w, h; // use 32-bit to avoid overflow
+  uint16_t row;
   uint8_t  r, g, b;
 
   uint32_t startTime = millis();
 
   if (read16(bmpFS) == 0x4D42)
   {
-    read32(bmpFS);
-    read32(bmpFS);
+    (void)read32(bmpFS);   // file size (unused)
+    (void)read32(bmpFS);   // creator bytes (unused)
     seekOffset = read32(bmpFS);
-    read32(bmpFS);
+    (void)read32(bmpFS);   // DIB header size
     w = read32(bmpFS);
     h = read32(bmpFS);
 
     if ((read16(bmpFS) == 1) && (read16(bmpFS) == 24) && (read32(bmpFS) == 0))
     {
-      y += h - 1;
+      // Clamp width/height to 64x64 to prevent OOB
+      if (w > 64) w = 64;
+      if (h > 64) h = 64;
+      int16_t yStart = y + (int16_t)h - 1;
 
-  //    bool oldSwapBytes = tft.getSwapBytes();
-  //    tft.setSwapBytes(true);
-  
       bmpFS.seek(seekOffset);
 
       uint16_t padding = (4 - ((w * 3) & 3)) & 3;
-      uint8_t lineBuffer[w * 3 + padding];
+      const size_t lineLen = (size_t)w * 3 + padding;
+      static uint8_t lineBuffer[64 * 3 + 4]; // max 64px + padding
 
       for (row = 0; row < h; row++) {
-
-        bmpFS.read(lineBuffer, sizeof(lineBuffer));
-        uint8_t*  bptr = lineBuffer;
-        uint16_t* tptr = (uint16_t*)lineBuffer;
-        // Convert 24 to 16 bit colours
+        size_t n = bmpFS.read(lineBuffer, lineLen);
+        if (n < lineLen) break; // abort on short read
+        uint8_t* bptr = lineBuffer;
         for (uint16_t col = 0; col < w; col++)
         {
           b = *bptr++;
           g = *bptr++;
           r = *bptr++;
-       //   *tptr++ = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
-               fillTab(col+64,63-row,((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3));
-
+          int px = x + col;
+          int py = yStart - row;
+          fillTab(px, py, ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3));
         }
       }
-     // tft.setSwapBytes(oldSwapBytes);
       Serial.print("Loaded in "); Serial.print(millis() - startTime);
       Serial.println(" ms");
     }
@@ -144,7 +143,6 @@ void handleFileUpload() {
     fsUploadFile = SPIFFS.open(filename, "w");
     filename = String();
   } else if (upload.status == UPLOAD_FILE_WRITE) {
-    //Serial.print("handleFileUpload Data: "); Serial.println(upload.currentSize);
     if (fsUploadFile)
       fsUploadFile.write(upload.buf, upload.currentSize);
   } else if (upload.status == UPLOAD_FILE_END) {
@@ -156,12 +154,12 @@ void handleFileUpload() {
 }
 
 void showlaohu() {
-    if(SPIFFS.exists(laohugif[gif_i]))
-  drawBmp(laohugif[gif_i], 0, 0);
-if(gif_i<17){
+  // Guard gif index and file existence
+  if (gif_i < 0 || gif_i >= (int)LAOHU_GIF_COUNT) gif_i = 0;
+  const char* path = laohugif[gif_i];
+  if (path && SPIFFS.exists(path)) {
+    drawBmp(path, 0, 0);
+  }
   gif_i++;
-}else{
-  gif_i=0;
-}
-  
+  if (gif_i >= (int)LAOHU_GIF_COUNT) gif_i = 0;
 }

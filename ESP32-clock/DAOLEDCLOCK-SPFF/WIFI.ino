@@ -53,6 +53,15 @@ void smartConfig()
 //********************************
 //***********页面配网****************
 //************************************
+
+// Forward declarations to satisfy arduino-cli build order
+void handleRoot();
+void handleConfigWifi();
+void handleNotFound();
+void wifiConfig();
+void initSoftAP();
+void initWebServer();
+
 //初始化AP模式
 void initSoftAP(){
   WiFi.mode(WIFI_AP);     //配置为AP模式
@@ -75,7 +84,7 @@ void initSoftAP(){
  
 //初始化WebServer
 void initWebServer(){
- 
+  
  //必须添加第二个参数HTTP_GET，以下面这种格式去写，否则无法强制门户
   server.on("/", HTTP_GET, handleRoot);                      //  当浏览器请求服务器根目录(网站首页)时调用自定义函数handleRoot处理，设置主页回调函数，必须添加第二个参数HTTP_GET，否则无法强制门户
   server.on("/configwifi", HTTP_POST, handleConfigWifi);     //  当浏览器请求服务器/configwifi(表单字段)目录时调用自定义函数handleConfigWifi处理
