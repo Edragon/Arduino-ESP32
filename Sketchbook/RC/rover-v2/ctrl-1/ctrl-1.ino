@@ -24,6 +24,11 @@ HardwareSerial crsfSerial(1);
 AlfredoCRSF crsf;
 Adafruit_NeoPixel ws2812(WS2812_NUM_LEDS, WS2812_PIN, NEO_GRB + NEO_KHZ800);
 
+// Soft start variables
+int pwmLeftIn1 = 0, pwmLeftIn2 = 0, pwmRightIn1 = 0, pwmRightIn2 = 0;
+const int SOFTSTART_STEP = 8; // PWM increment per loop
+const int SOFTSTART_TARGET = 128; // 50% speed
+
 void setup()
 {
   Serial.begin(115200);
@@ -92,10 +97,11 @@ void controlMotors()
 
   // Failsafe: if all CRSF channels 1-4 are 0, stop motors and turn off WS2812
   if (roll == 0 && throttle == 0 && ch2 == 0 && ch3 == 0) {
-    digitalWrite(LEFT_MOTOR_IN1, LOW);
-    digitalWrite(LEFT_MOTOR_IN2, LOW);
-    digitalWrite(RIGHT_MOTOR_IN1, LOW);
-    digitalWrite(RIGHT_MOTOR_IN2, LOW);
+    pwmLeftIn1 = pwmLeftIn2 = pwmRightIn1 = pwmRightIn2 = 0;
+    analogWrite(LEFT_MOTOR_IN1, 0);
+    analogWrite(LEFT_MOTOR_IN2, 0);
+    analogWrite(RIGHT_MOTOR_IN1, 0);
+    analogWrite(RIGHT_MOTOR_IN2, 0);
     ws2812.setPixelColor(0, ws2812.Color(0,0,0));
     ws2812.show();
     return;
@@ -112,13 +118,13 @@ void controlMotors()
 
   // Reverse forward/backward logic
   if (throttle > center + deadband) {
-    // Now: throttle high = backward
-    leftBackward = true;
-    rightBackward = true;
-  } else if (throttle < center - deadband) {
-    // Now: throttle low = forward
+    // throttle high = forward
     leftForward = true;
     rightForward = true;
+  } else if (throttle < center - deadband) {
+    // throttle low = backward
+    leftBackward = true;
+    rightBackward = true;
   }
 
   // Reverse left/right logic (steering)
@@ -136,12 +142,31 @@ void controlMotors()
     rightForward = false;
   }
 
+  // Determine target PWM for each pin
+  int targetLeftIn1 = leftForward ? SOFTSTART_TARGET : 0;
+  int targetLeftIn2 = leftBackward ? SOFTSTART_TARGET : 0;
+  int targetRightIn1 = rightForward ? SOFTSTART_TARGET : 0;
+  int targetRightIn2 = rightBackward ? SOFTSTART_TARGET : 0;
+
+  // Soft start ramping
+  if (pwmLeftIn1 < targetLeftIn1) pwmLeftIn1 = min(pwmLeftIn1 + SOFTSTART_STEP, targetLeftIn1);
+  else if (pwmLeftIn1 > targetLeftIn1) pwmLeftIn1 = max(pwmLeftIn1 - SOFTSTART_STEP, targetLeftIn1);
+
+  if (pwmLeftIn2 < targetLeftIn2) pwmLeftIn2 = min(pwmLeftIn2 + SOFTSTART_STEP, targetLeftIn2);
+  else if (pwmLeftIn2 > targetLeftIn2) pwmLeftIn2 = max(pwmLeftIn2 - SOFTSTART_STEP, targetLeftIn2);
+
+  if (pwmRightIn1 < targetRightIn1) pwmRightIn1 = min(pwmRightIn1 + SOFTSTART_STEP, targetRightIn1);
+  else if (pwmRightIn1 > targetRightIn1) pwmRightIn1 = max(pwmRightIn1 - SOFTSTART_STEP, targetRightIn1);
+
+  if (pwmRightIn2 < targetRightIn2) pwmRightIn2 = min(pwmRightIn2 + SOFTSTART_STEP, targetRightIn2);
+  else if (pwmRightIn2 > targetRightIn2) pwmRightIn2 = max(pwmRightIn2 - SOFTSTART_STEP, targetRightIn2);
+
   // Set left motor
-  digitalWrite(LEFT_MOTOR_IN1, leftForward ? HIGH : LOW);
-  digitalWrite(LEFT_MOTOR_IN2, leftBackward ? HIGH : LOW);
+  analogWrite(LEFT_MOTOR_IN1, pwmLeftIn1);
+  analogWrite(LEFT_MOTOR_IN2, pwmLeftIn2);
   // Set right motor
-  digitalWrite(RIGHT_MOTOR_IN1, rightForward ? HIGH : LOW);
-  digitalWrite(RIGHT_MOTOR_IN2, rightBackward ? HIGH : LOW);
+  analogWrite(RIGHT_MOTOR_IN1, pwmRightIn1);
+  analogWrite(RIGHT_MOTOR_IN2, pwmRightIn2);
 
   // WS2812 LED direction indication
   if (leftForward && rightForward) {
