@@ -36,8 +36,11 @@
  *
  */
 
-#ifdef __AVR__
+#if defined(__AVR__) || defined(ARDUINO_ARCH_RTTHREAD)
 #include <avr/pgmspace.h>
+#elif defined(ARDUINO_ARDUINO_NANO33BLE) ||                                    \
+    defined(ARDUINO_ARCH_MBED_RP2040) || defined(ARDUINO_ARCH_RP2040)
+#include <api/deprecated-avr-comp/avr/pgmspace.h>
 #elif defined(ESP8266) || defined(ESP32)
 #include <pgmspace.h>
 #else
@@ -46,7 +49,8 @@
 #endif
 
 #if !defined(__ARM_ARCH) && !defined(ENERGIA) && !defined(ESP8266) &&          \
-    !defined(ESP32) && !defined(__arc__)
+    !defined(ESP32) && !defined(__arc__) && !defined(__RL78__) &&              \
+    !defined(CH32V20x) && !defined(PICO_RISCV)
 #include <util/delay.h>
 #endif
 
@@ -220,7 +224,7 @@ Adafruit_SSD1306::Adafruit_SSD1306(uint8_t w, uint8_t h, int8_t mosi_pin,
             Display width in pixels
     @param  h
             Display height in pixels
-    @param  spi
+    @param  spi_ptr
             Pointer to an existing SPIClass instance (e.g. &SPI, the
             microcontroller's primary SPI bus).
     @param  dc_pin
@@ -240,11 +244,12 @@ Adafruit_SSD1306::Adafruit_SSD1306(uint8_t w, uint8_t h, int8_t mosi_pin,
     @note   Call the object's begin() function before use -- buffer
             allocation is performed there!
 */
-Adafruit_SSD1306::Adafruit_SSD1306(uint8_t w, uint8_t h, SPIClass *spi,
+Adafruit_SSD1306::Adafruit_SSD1306(uint8_t w, uint8_t h, SPIClass *spi_ptr,
                                    int8_t dc_pin, int8_t rst_pin, int8_t cs_pin,
                                    uint32_t bitrate)
-    : Adafruit_GFX(w, h), spi(spi ? spi : &SPI), wire(NULL), buffer(NULL),
-      mosiPin(-1), clkPin(-1), dcPin(dc_pin), csPin(cs_pin), rstPin(rst_pin) {
+    : Adafruit_GFX(w, h), spi(spi_ptr ? spi_ptr : &SPI), wire(NULL),
+      buffer(NULL), mosiPin(-1), clkPin(-1), dcPin(dc_pin), csPin(cs_pin),
+      rstPin(rst_pin) {
 #ifdef SPI_HAS_TRANSACTION
   spiSettings = SPISettings(bitrate, MSBFIRST, SPI_MODE0);
 #endif
@@ -345,6 +350,16 @@ Adafruit_SSD1306::~Adafruit_SSD1306(void) {
 
 // Issue single byte out SPI, either soft or hardware as appropriate.
 // SPI transaction/selection must be performed in calling function.
+/*!
+    @brief  Write a single byte to the SPI port.
+
+    @param  d
+                        Data byte to be written.
+
+    @return void
+    @note   See HAVE_PORTREG which defines if the method uses a port or bit-bang
+   method
+*/
 inline void Adafruit_SSD1306::SPIwrite(uint8_t d) {
   if (spi) {
     (void)spi->transfer(d);
@@ -366,10 +381,18 @@ inline void Adafruit_SSD1306::SPIwrite(uint8_t d) {
   }
 }
 
-// Issue single command to SSD1306, using I2C or hard/soft SPI as needed.
-// Because command calls are often grouped, SPI transaction and selection
-// must be started/ended in calling function for efficiency.
-// This is a private function, not exposed (see ssd1306_command() instead).
+/*!
+    @brief Issue single command to SSD1306, using I2C or hard/soft SPI as
+   needed. Because command calls are often grouped, SPI transaction and
+   selection must be started/ended in calling function for efficiency. This is a
+   protected function, not exposed (see ssd1306_command() instead).
+
+        @param c
+                   the command character to send to the display.
+                   Refer to ssd1306 data sheet for commands
+    @return None (void).
+    @note
+*/
 void Adafruit_SSD1306::ssd1306_command1(uint8_t c) {
   if (wire) { // I2C
     wire->beginTransmission(i2caddr);
@@ -382,8 +405,18 @@ void Adafruit_SSD1306::ssd1306_command1(uint8_t c) {
   }
 }
 
-// Issue list of commands to SSD1306, same rules as above re: transactions.
-// This is a private function, not exposed.
+/*!
+    @brief Issue list of commands to SSD1306, same rules as above re:
+   transactions. This is a protected function, not exposed.
+        @param c
+                   pointer to list of commands
+
+        @param n
+                   number of commands in the list
+
+    @return None (void).
+    @note
+*/
 void Adafruit_SSD1306::ssd1306_commandList(const uint8_t *c, uint8_t n) {
   if (wire) { // I2C
     wire->beginTransmission(i2caddr);
@@ -467,6 +500,8 @@ bool Adafruit_SSD1306::begin(uint8_t vcs, uint8_t addr, bool reset,
     return false;
 
   clearDisplay();
+
+#ifndef SSD1306_NO_SPLASH
   if (HEIGHT > 32) {
     drawBitmap((WIDTH - splash1_width) / 2, (HEIGHT - splash1_height) / 2,
                splash1_data, splash1_width, splash1_height, 1);
@@ -474,6 +509,7 @@ bool Adafruit_SSD1306::begin(uint8_t vcs, uint8_t addr, bool reset,
     drawBitmap((WIDTH - splash2_width) / 2, (HEIGHT - splash2_height) / 2,
                splash2_data, splash2_width, splash2_height, 1);
   }
+#endif
 
   vccstate = vcs;
 
@@ -563,6 +599,9 @@ bool Adafruit_SSD1306::begin(uint8_t vcs, uint8_t addr, bool reset,
   } else if ((WIDTH == 96) && (HEIGHT == 16)) {
     comPins = 0x2; // ada x12
     contrast = (vccstate == SSD1306_EXTERNALVCC) ? 0x10 : 0xAF;
+  } else if ((WIDTH == 64) && (HEIGHT == 32)) {
+    comPins = 0x12; // ada x12
+    contrast = (vccstate == SSD1306_EXTERNALVCC) ? 0x10 : 0xCF;
   } else {
     // Other screen varieties -- TBD
   }
@@ -599,7 +638,8 @@ bool Adafruit_SSD1306::begin(uint8_t vcs, uint8_t addr, bool reset,
     @param  y
             Row of display -- 0 at top to (screen height -1) at bottom.
     @param  color
-            Pixel color, one of: SSD1306_BLACK, SSD1306_WHITE or SSD1306_INVERT.
+            Pixel color, one of: SSD1306_BLACK, SSD1306_WHITE or
+            SSD1306_INVERSE.
     @return None (void).
     @note   Changes buffer contents only, no immediate effect on display.
             Follow up with a call to display(), or with other graphics
@@ -657,7 +697,7 @@ void Adafruit_SSD1306::clearDisplay(void) {
     @param  w
             Width of line, in pixels.
     @param  color
-            Line color, one of: SSD1306_BLACK, SSD1306_WHITE or SSD1306_INVERT.
+            Line color, one of: SSD1306_BLACK, SSD1306_WHITE or SSD1306_INVERSE.
     @return None (void).
     @note   Changes buffer contents only, no immediate effect on display.
             Follow up with a call to display(), or with other graphics
@@ -695,6 +735,23 @@ void Adafruit_SSD1306::drawFastHLine(int16_t x, int16_t y, int16_t w,
     drawFastHLineInternal(x, y, w, color);
 }
 
+/*!
+    @brief  Draw a horizontal line with a width and color. Used by public
+   methods drawFastHLine,drawFastVLine
+        @param x
+                   Leftmost column -- 0 at left to (screen width - 1) at right.
+        @param y
+                   Row of display -- 0 at top to (screen height -1) at bottom.
+        @param w
+                   Width of line, in pixels.
+        @param color
+               Line color, one of: SSD1306_BLACK, SSD1306_WHITE or
+   SSD1306_INVERSE.
+    @return None (void).
+    @note   Changes buffer contents only, no immediate effect on display.
+            Follow up with a call to display(), or with other graphics
+            commands as needed by one's own application.
+*/
 void Adafruit_SSD1306::drawFastHLineInternal(int16_t x, int16_t y, int16_t w,
                                              uint16_t color) {
 
@@ -740,7 +797,7 @@ void Adafruit_SSD1306::drawFastHLineInternal(int16_t x, int16_t y, int16_t w,
     @param  h
             Height of line, in pixels.
     @param  color
-            Line color, one of: SSD1306_BLACK, SSD1306_WHITE or SSD1306_INVERT.
+            Line color, one of: SSD1306_BLACK, SSD1306_WHITE or SSD1306_INVERSE.
     @return None (void).
     @note   Changes buffer contents only, no immediate effect on display.
             Follow up with a call to display(), or with other graphics
@@ -778,6 +835,22 @@ void Adafruit_SSD1306::drawFastVLine(int16_t x, int16_t y, int16_t h,
     drawFastVLineInternal(x, y, h, color);
 }
 
+/*!
+    @brief  Draw a vertical line with a width and color. Used by public method
+   drawFastHLine,drawFastVLine
+        @param x
+                   Leftmost column -- 0 at left to (screen width - 1) at right.
+        @param __y
+                   Row of display -- 0 at top to (screen height -1) at bottom.
+        @param __h height of the line in pixels
+        @param color
+                   Line color, one of: SSD1306_BLACK, SSD1306_WHITE or
+   SSD1306_INVERSE.
+    @return None (void).
+    @note   Changes buffer contents only, no immediate effect on display.
+            Follow up with a call to display(), or with other graphics
+            commands as needed by one's own application.
+*/
 void Adafruit_SSD1306::drawFastVLineInternal(int16_t x, int16_t __y,
                                              int16_t __h, uint16_t color) {
 
@@ -871,7 +944,7 @@ void Adafruit_SSD1306::drawFastVLineInternal(int16_t x, int16_t __y,
         }
       }
     } // endif positive height
-  }   // endif x in bounds
+  } // endif x in bounds
 }
 
 /*!
@@ -927,11 +1000,18 @@ void Adafruit_SSD1306::display(void) {
   TRANSACTION_START
   static const uint8_t PROGMEM dlist1[] = {
       SSD1306_PAGEADDR,
-      0,                      // Page start address
-      0xFF,                   // Page end (not really, but works here)
-      SSD1306_COLUMNADDR, 0}; // Column start address
+      0,                   // Page start address
+      0xFF,                // Page end (not really, but works here)
+      SSD1306_COLUMNADDR}; // Column start address
   ssd1306_commandList(dlist1, sizeof(dlist1));
-  ssd1306_command1(WIDTH - 1); // Column end address
+
+  if (WIDTH == 64) {
+    ssd1306_command1(0x20);             // Column start
+    ssd1306_command1(0x20 + WIDTH - 1); // Column end address
+  } else {
+    ssd1306_command1(0);           // Column start
+    ssd1306_command1((WIDTH - 1)); // Column end address
+  }
 
 #if defined(ESP8266)
   // ESP8266 needs a periodic yield() call to avoid watchdog reset.

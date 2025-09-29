@@ -67,7 +67,7 @@ int32_t iOldPos;
     return (int)_gif.sCommentLen;
 } /* getComment() */
 
-//
+//  
 // Allocate a block of memory to hold the entire canvas (as 8-bpp)
 //
 int AnimatedGIF::allocFrameBuf(GIF_ALLOC_CALLBACK *pfnAlloc)
@@ -85,6 +85,38 @@ int AnimatedGIF::allocFrameBuf(GIF_ALLOC_CALLBACK *pfnAlloc)
     return GIF_INVALID_PARAMETER;
 } /* allocFrameBuf() */
 //
+// Allocate a block of memory to hold the Turbo Buffer entire canvas (as 8-bpp)
+// as well as 32k needed for faster decoding
+//
+int AnimatedGIF::allocTurboBuf(GIF_ALLOC_CALLBACK *pfnAlloc)
+{
+    if (_gif.iCanvasWidth > 0 && _gif.iCanvasHeight > 0 && _gif.pTurboBuffer == NULL)
+    {
+        // Allocate a little extra space for the current line
+        // as RGB565 or RGB888
+        int iTurboSize = TURBO_BUFFER_SIZE + (_gif.iCanvasWidth * _gif.iCanvasHeight);
+        _gif.pTurboBuffer = (unsigned char *)(*pfnAlloc)(iTurboSize);
+        if (_gif.pTurboBuffer == NULL)
+            return GIF_ERROR_MEMORY;
+        return GIF_SUCCESS;
+    }
+    return GIF_INVALID_PARAMETER;
+} /* allocTurboBuf() */
+//
+// Set the frame buffer pointer
+//
+void AnimatedGIF::setFrameBuf(void *pFrameBuf)
+{
+    _gif.pFrameBuffer = (uint8_t*)pFrameBuf;
+}
+//
+// Set the Turbo buffer pointer
+//
+void AnimatedGIF::setTurboBuf(void *pBuf)
+{
+    _gif.pTurboBuffer = (uint8_t *)pBuf;
+} /* setTurboBuf() */
+//
 // Set the DRAW callback behavior to RAW (default)
 // or COOKED (requires allocating a frame buffer)
 //
@@ -95,6 +127,19 @@ int AnimatedGIF::setDrawType(int iType)
     _gif.ucDrawType = (uint8_t)iType;
     return GIF_SUCCESS;
 } /* setDrawType() */
+//
+// Release the memory used by the Turbo buffer
+//
+int AnimatedGIF::freeTurboBuf(GIF_FREE_CALLBACK *pfnFree)
+{
+    if (_gif.pTurboBuffer)
+    {
+        (*pfnFree)(_gif.pTurboBuffer);
+        _gif.pTurboBuffer = NULL;
+        return GIF_SUCCESS;
+    }
+    return GIF_INVALID_PARAMETER;
+} /* freeTurboBuf() */
 //
 // Release the memory used by the frame buffer
 //
@@ -116,15 +161,47 @@ uint8_t * AnimatedGIF::getFrameBuf()
     return _gif.pFrameBuffer;
 } /* getFrameBuf() */
 
+//
+// Return a pointer to the Turbo buffer (if it was allocated)
+//
+uint8_t * AnimatedGIF::getTurboBuf()
+{
+    return _gif.pTurboBuffer;
+} /* getTurboBuf() */
+
 int AnimatedGIF::getCanvasWidth()
 {
     return _gif.iCanvasWidth;
 } /* getCanvasWidth() */
 
+int AnimatedGIF::getFrameWidth()
+{
+    return _gif.iWidth;
+}
+int AnimatedGIF::getFrameHeight()
+{
+    return _gif.iHeight;
+}
+
+int AnimatedGIF::getFrameXOff()
+{
+    return _gif.iX;
+} /* AnimatedGIF() */
+
+int AnimatedGIF::getFrameYOff()
+{
+    return _gif.iY;
+}
+
 int AnimatedGIF::getCanvasHeight()
 {
     return _gif.iCanvasHeight;
 } /* getCanvasHeight() */
+
+int AnimatedGIF::getLoopCount()
+{
+    return _gif.iRepeatCount;
+} /* getLoopCount() */
 
 int AnimatedGIF::getInfo(GIFINFO *pInfo)
 {
@@ -164,6 +241,7 @@ void AnimatedGIF::close()
 
 void AnimatedGIF::reset()
 {
+    _gif.iError = GIF_SUCCESS;
     (*_gif.pfnSeek)(&_gif.GIFFile, 0);
 } /* reset() */
 
@@ -198,7 +276,11 @@ long lTime = millis();
         _gif.pUser = pUser;
         if (_gif.iError == GIF_EMPTY_FRAME) // don't try to decode it
             return 0;
-        rc = DecodeLZW(&_gif, 0);
+        if (_gif.pTurboBuffer) {
+            rc = DecodeLZWTurbo(&_gif, 0);
+        } else {
+            rc = DecodeLZW(&_gif, 0);
+        }
         if (rc != 0) // problem
             return -1;
     }
@@ -229,3 +311,4 @@ long lTime = millis();
         *delayMilliseconds = _gif.iFrameDelay;
     return (_gif.GIFFile.iPos < _gif.GIFFile.iSize-10);
 } /* playFrame() */
+

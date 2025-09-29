@@ -20,6 +20,10 @@ You will also have to install the **Adafruit GFX library** which provides graphi
 
 ## Changes
 Pull Request:
+   (November 2021) 
+   * Added define `SSD1306_NO_SPLASH` to opt-out of including splash images in `PROGMEM` and drawing to display during `begin`.
+
+Pull Request:
    (September 2019) 
    * new #defines for SSD1306_BLACK, SSD1306_WHITE and SSD1306_INVERSE that match existing #define naming scheme and won't conflict with common color names
    * old #defines for BLACK, WHITE and INVERSE kept for backwards compat (opt-out with #define NO_ADAFRUIT_SSD1306_COLOR_COMPATIBILITY)
@@ -47,6 +51,10 @@ Intel Curie |      X     |            |          |
 WICED       |      X     |            |          | No hardware SPI - bitbang only
 ATtiny85    |            |      X     |          |
 Particle    |      X     |            |          |
+RTduino     |      X     |            |          |
+CH32 RISC-V |      X     |            |          |
+RP2040      |      X     |            |          |
+RP2350      |      X     |            |          | ARM or RISC-V architecture 
 
   * ATmega328 : Arduino UNO, Adafruit Pro Trinket, Adafruit Metro 328, Adafruit Metro Mini
   * ATmega32u4 : Arduino Leonardo, Arduino Micro, Arduino Yun, Teensy 2.0, Adafruit Flora, Bluefruit Micro
@@ -56,5 +64,8 @@ Particle    |      X     |            |          |
   * ATSAMD21 : Arduino Zero, M0 Pro, Adafruit Metro Express, Feather M0
   * ATtiny85 : Adafruit Gemma, Arduino Gemma, Adafruit Trinket
   * Particle: Particle Argon
+  * RTduino : [RTduino](https://github.com/RTduino/RTduino) is the Arduino ecosystem compatibility layer for [RT-Thread RTOS](https://github.com/RT-Thread/rt-thread) BSPs
+  * CH32 RISC-V: CH32V203
+  * RP2040, RP2350: Tested on Raspberry Pi Pico W/2W with [Arduino-Pico](https://github.com/earlephilhower/arduino-pico) core.
 
 <!-- END COMPATIBILITY TABLE -->

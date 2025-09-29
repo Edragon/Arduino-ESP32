@@ -108,9 +108,9 @@ void controlMotors()
   }
 
   // Center values for CRSF are typically 992-1504-2011
-  // We'll use 1500 as center, <1450 is left/reverse, >1550 is right/forward
+  // We'll use 1500 as center, <1400 is left/reverse, >1600 is right/forward
   const int center = 1500;
-  const int deadband = 50;
+  const int deadband = 200; // Increased deadband for larger no-control zone
 
   // Determine direction for each motor
   bool leftForward = false, leftBackward = false;
