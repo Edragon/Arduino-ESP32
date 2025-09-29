@@ -1,7 +1,7 @@
 /*
     MIT License
 
-    Copyright (c) 2018-2019, Alexey Dynda
+    Copyright (c) 2018-2020, Alexey Dynda
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -358,8 +358,8 @@ void NanoCanvasOps<1>::drawBitmap1(lcdint_t x, lcdint_t y, lcduint_t w, lcduint_
     uint8_t mainFlag = 1;
     if (y + (lcdint_t)h <= 0) return;
     if (y >= (lcdint_t)m_h) return;
-    if (x + (lcdint_t)w <= 0) return;
-    if (x >= (lcdint_t)m_w)  return;
+    if ((int16_t)x + (int16_t)w <= 0) return;
+    if ((int16_t)x >= (int16_t)m_w)  return;
     if (y < 0)
     {
          bitmap += ((lcduint_t)((-y) + 7) >> 3) * w;
@@ -696,12 +696,12 @@ void NanoCanvasOps<4>::drawBitmap1(lcdint_t xpos, lcdint_t ypos, lcduint_t w, lc
     }
     if (y2 >= (lcdint_t)m_h)
     {
-         yb2 -= (y2 - (lcdint_t)m_h + 1);
+         // yb2 -= (y2 - (lcdint_t)m_h + 1);
          y2 = (lcdint_t)m_h - 1;
     }
     if (x2 >= (lcdint_t)m_w)
     {
-         xb2 -= (x2 - (lcdint_t)m_w + 1);
+         // xb2 -= (x2 - (lcdint_t)m_w + 1);
          x2 = (lcdint_t)m_w - 1;
     }
     for ( lcdint_t y = y1; y <= y2; y++ )
@@ -755,12 +755,12 @@ void NanoCanvasOps<4>::drawBitmap8(lcdint_t xpos, lcdint_t ypos, lcduint_t w, lc
     }
     if (y2 >= (lcdint_t)m_h)
     {
-         yb2 -= (y2 - (lcdint_t)m_h + 1);
+         //yb2 -= (y2 - (lcdint_t)m_h + 1);
          y2 = (lcdint_t)m_h - 1;
     }
     if (x2 >= (lcdint_t)m_w)
     {
-         xb2 -= (x2 - (lcdint_t)m_w + 1);
+         //xb2 -= (x2 - (lcdint_t)m_w + 1);
          x2 = (lcdint_t)m_w - 1;
     }
     for ( lcdint_t y = y1; y <= y2; y++ )

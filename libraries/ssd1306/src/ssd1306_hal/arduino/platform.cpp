@@ -1,7 +1,7 @@
 /*
     MIT License
 
-    Copyright (c) 2016-2019, Alexey Dynda
+    Copyright (c) 2016-2021, Alexey Dynda
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +29,7 @@
 #include "intf/spi/ssd1306_spi.h"
 #include "lcd/lcd_common.h"
 
-#if defined(ARDUINO)
+#if defined(ARDUINO) && !defined(ENERGIA)
 
 //////////////////////////////////////////////////////////////////////////////////
 //                        ARDUINO I2C IMPLEMENTATION
@@ -39,19 +39,23 @@
     defined(CONFIG_PLATFORM_I2C_ENABLE)
 
 #include <Wire.h>
+#if defined( WIRE_INTERFACES_COUNT ) && WIRE_INTERFACES_COUNT > 1
+#include <Wire1.h>
+#endif
 
 static uint8_t s_bytesWritten = 0;
 static uint8_t s_sa = SSD1306_SA;
+static TwoWire *s_i2c = nullptr;
 
 static void ssd1306_i2cStart_Wire(void)
 {
-    Wire.beginTransmission(s_sa);
+    s_i2c->beginTransmission(s_sa);
     s_bytesWritten = 0;
 }
 
 static void ssd1306_i2cStop_Wire(void)
 {
-    Wire.endTransmission();
+    s_i2c->endTransmission();
 }
 
 /**
@@ -72,7 +76,7 @@ static void ssd1306_i2cSendByte_Wire(uint8_t data)
 #elif defined(USI_BUF_SIZE)
     if (s_bytesWritten >= (USI_BUF_SIZE -2))
 #else
-    if ( Wire.write(data) != 0 )
+    if ( s_i2c->write(data) != 0 )
     {
         s_bytesWritten++;
         return;
@@ -84,7 +88,7 @@ static void ssd1306_i2cSendByte_Wire(uint8_t data)
         ssd1306_i2cSendByte_Wire(0x40);
         /* Commands never require many bytes. Thus assume that user tries to send data */
     }
-    Wire.write(data);
+    s_i2c->write(data);
     s_bytesWritten++;
 }
 
@@ -106,15 +110,30 @@ void ssd1306_platform_i2cInit(int8_t busId, uint8_t addr, ssd1306_platform_i2cCo
 #if defined(ESP8266) || defined(ESP32) || defined(ESP31B)
     if ((cfg->scl >= 0) && (cfg->sda >=0))
     {
-        Wire.begin(cfg->sda, cfg->scl);
+        s_i2c = &Wire;
+        s_i2c->begin(cfg->sda, cfg->scl);
     }
     else
 #endif
     {
-        Wire.begin();
+#if !defined( WIRE_INTERFACES_COUNT )
+        s_i2c = &Wire;
+#elif WIRE_INTERFACES_COUNT < 2
+        s_i2c = &Wire;
+#elif WIRE_INTERFACES_COUNT < 3
+        if ( busId == 0 )
+        {
+            s_i2c = &Wire;
+        }
+        else
+        {
+            s_i2c = &Wire1;
+        }
+#endif
+        s_i2c->begin();
     }
     #ifdef SSD1306_WIRE_CLOCK_CONFIGURABLE
-        Wire.setClock(400000);
+        s_i2c->setClock(400000);
     #endif
 
     if (addr) s_sa = addr;

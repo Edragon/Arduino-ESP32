@@ -63,11 +63,11 @@ Arming/disarming with sticks (when no arm switch is defined, i.e. cfg.rcl_arm_ch
 LED State                              Meaning
 ---------                              -------
 OFF                                    Not powered
-ON                                     Startup (don't move, running gyro calibration)
-Blinking long OFF short ON             DISARMED
-Blinking long ON short OFF             ARMED
+ON (blue)                              Startup (don't move, running gyro calibration)
+Blinking long OFF short ON (green)     DISARMED
+Blinking long ON short OFF (red)       ARMED
 Blink interval longer than 1 second    imu_loop() is taking too much time
-fast blinking                          Something is wrong, connect USB serial for info
+Fast blinking                          Something is wrong, connect USB serial for info
 
 MIT license
 Copyright (c) 2024-2025 https://madflight.com
@@ -234,7 +234,7 @@ In FBWA mode the rudder is under manual control.
 */
 
   //inputs: roll_des, pitch_des, yawRate_des
-  //outputs: PIDroll.PID, PIDpitch.PID, PIDyaw.PID
+  //outputs: pid.roll, pid.pitch, pid.yaw
 
   //desired values
   float roll_des = rcl.roll * maxRoll; //Between -maxRoll and +maxRoll
@@ -255,17 +255,17 @@ In FBWA mode the rudder is under manual control.
   integral_roll += error_roll * imu.dt;
   integral_roll = constrain(integral_roll, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
   float derivative_roll = ahr.gx;
-  PIDroll.PID = Kp_roll*error_roll + Ki_roll*integral_roll - Kd_roll*derivative_roll; //nominal output -1 to 1 (can be larger)
+  pid.roll = Kp_roll*error_roll + Ki_roll*integral_roll - Kd_roll*derivative_roll; //nominal output -1 to 1 (can be larger)
 
   //Pitch PID - stabilize desired pitch angle
   float error_pitch = pitch_des - ahr.pitch;
   integral_pitch += error_pitch * imu.dt;
   integral_pitch = constrain(integral_pitch, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
   float derivative_pitch = ahr.gy; 
-  PIDpitch.PID = Kp_pitch*error_pitch + Ki_pitch*integral_pitch - Kd_pitch*derivative_pitch; //nominal output -1 to 1 (can be larger)
+  pid.pitch = Kp_pitch*error_pitch + Ki_pitch*integral_pitch - Kd_pitch*derivative_pitch; //nominal output -1 to 1 (can be larger)
 
   //Yaw PID - passthru rcin
-  PIDyaw.PID = rcl.yaw;
+  pid.yaw = rcl.yaw;
   (void) integral_yaw;
   (void) error_yaw_prev;
 
@@ -275,7 +275,7 @@ In FBWA mode the rudder is under manual control.
   integral_yaw += error_yaw * imu.dt;
   integral_yaw = constrain(integral_yaw, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
   float derivative_yaw = (error_yaw - error_yaw_prev) / imu.dt; 
-  PIDyaw.PID = constrain(0.01 * (Kp_yaw*error_yaw + Ki_yaw*integral_yaw + Kd_yaw*derivative_yaw), -1.0f, 1.0f); //Scaled by .01 to bring within -1 to 1 range
+  pid.yaw = constrain(0.01 * (Kp_yaw*error_yaw + Ki_yaw*integral_yaw + Kd_yaw*derivative_yaw), -1.0f, 1.0f); //Scaled by .01 to bring within -1 to 1 range
 
   //Update derivative variables
   error_yaw_prev = error_yaw;
@@ -284,7 +284,7 @@ In FBWA mode the rudder is under manual control.
 
 void control_ROLL(bool zero_integrators) {
   //inputs: roll_des, pitch_des, yawRate_des
-  //outputs: PIDroll.PID, PIDpitch.PID, PIDyaw.PID
+  //outputs: pid.roll, pid.pitch, pid.yaw
 
   //desired values
   float roll_des = rcl.roll * maxRoll; //Between -maxRoll and +maxRoll
@@ -302,13 +302,13 @@ void control_ROLL(bool zero_integrators) {
   integral_roll += error_roll * imu.dt;
   integral_roll = constrain(integral_roll, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
   float derivative_roll = ahr.gx;
-  PIDroll.PID = Kp_roll*error_roll + Ki_roll*integral_roll - Kd_roll*derivative_roll; //nominal output -1 to 1 (can be larger)
+  pid.roll = Kp_roll*error_roll + Ki_roll*integral_roll - Kd_roll*derivative_roll; //nominal output -1 to 1 (can be larger)
 
   //Pitch PID - passthru rcin
-  PIDpitch.PID = rcl.pitch;
+  pid.pitch = rcl.pitch;
 
   //Yaw PID - passthru rcin
-  PIDyaw.PID = rcl.yaw; 
+  pid.yaw = rcl.yaw; 
 }
 
 
@@ -317,9 +317,9 @@ void control_MANUAL() {
 Regular RC control, no stabilization. All RC inputs are passed through to the servo outputs.
 */  
   //pass rcin through to PID - PID values are -1 to +1, rcin values are -1 to +1
-  PIDroll.PID = rcl.roll;  //-1 = left, 1 = right
-  PIDpitch.PID = rcl.pitch; //-1 = pitch up/stick back, 1 = pitch down/stick forward
-  PIDyaw.PID = rcl.yaw; //-1 = left, 1 = right
+  pid.roll = rcl.roll;  //-1 = left, 1 = right
+  pid.pitch = rcl.pitch; //-1 = pitch up/stick back, 1 = pitch down/stick forward
+  pid.yaw = rcl.yaw; //-1 = left, 1 = right
 }
 
 void out_KillSwitchAndFailsafe() {
@@ -346,21 +346,21 @@ void out_KillSwitchAndFailsafe() {
 void out_Mixer() {
   //DESCRIPTION: Mixes scaled commands from PID controller to actuator outputs based on vehicle configuration
   /*
-   * Takes PIDroll.PID, PIDpitch.PID, and PIDyaw.PID computed from the PID controller and appropriately mixes them for the desired
-   * vehicle configuration. For example on a quadcopter, the left two motors should have +PIDroll.PID while the right two motors
-   * should have -PIDroll.PID. Front two should have +PIDpitch.PID and the back two should have -PIDpitch.PID etc... every motor has
+   * Takes pid.roll, pid.pitch, and pid.yaw computed from the PID controller and appropriately mixes them for the desired
+   * vehicle configuration. For example on a quadcopter, the left two motors should have +pid.roll while the right two motors
+   * should have -pid.roll. Front two should have +pid.pitch and the back two should have -pid.pitch etc... every motor has
    * normalized (0 to 1) rcl.throttle command for throttle control. Can also apply direct unstabilized commands from the transmitter with 
    * rcin_xxx variables are to be sent to the motor ESCs and servos.
    * 
    *Relevant variables:
    *rcl.throttle - direct thottle control
-   *PIDroll.PID, PIDpitch.PID, PIDyaw.PID - stabilized axis variables
+   *pid.roll, pid.pitch, pid.yaw - stabilized axis variables
    *rcl.roll, rcl.pitch, rcl.yaw - direct unstabilized command passthrough
 
     rcl.throttle   0: idle throttle/stick back  1: full throttle/stick forward
-    PIDroll.PID   -1: roll left/stick left      1: roll right/stick right
-    PIDpitch.PID  -1: pitch up/stick back       1: pitch down/stick forward
-    PIDyaw.PID    -1: yaw left/stick left       1: yaw right/stick right
+    pid.roll   -1: roll left/stick left      1: roll right/stick right
+    pid.pitch  -1: pitch up/stick back       1: pitch down/stick forward
+    pid.yaw    -1: yaw left/stick left       1: yaw right/stick right
    */
 
   //Plane mixing - PID values are -1 to +1 (nominal), SERVO values are 0 to 1 (clipped by pwm class)
@@ -379,34 +379,34 @@ void out_Mixer() {
     out.set(OUT_MOTOR2_REVERSED-1, 1.0 - rcl.throttle);
   #endif 
 
-  //aileron: when PIDroll.PID positive -> roll right -> deflect left aileron down, deflect right aileron up
+  //aileron: when pid.roll positive -> roll right -> deflect left aileron down, deflect right aileron up
   #ifdef OUT_LEFT_AILERON_DOWN //left aileron deflects down on high pwm
-    out.set(OUT_LEFT_AILERON_DOWN-1, 0.5 +PIDroll.PID/2.0);
+    out.set(OUT_LEFT_AILERON_DOWN-1, 0.5 +pid.roll/2.0);
   #endif
   #ifdef OUT_RIGHT_AILERON_UP //right aileron deflects up on high pwm
-    out.set(OUT_RIGHT_AILERON_UP-1, 0.5 +PIDroll.PID/2.0);
+    out.set(OUT_RIGHT_AILERON_UP-1, 0.5 +pid.roll/2.0);
   #endif
   #ifdef OUT_LEFT_AILERON_UP //reversed: left aileron deflects up on high pwm
-    out.set(OUT_LEFT_AILERON_UP-1, 0.5 -PIDroll.PID/2.0);
+    out.set(OUT_LEFT_AILERON_UP-1, 0.5 -pid.roll/2.0);
   #endif
   #if defined(OUT_RIGHT_AILERON_DOWN) //reversed: right aileron deflects down on high pwm
-    out.set(OUT_RIGHT_AILERON_DOWN-1, 0.5 -PIDroll.PID/2.0);
+    out.set(OUT_RIGHT_AILERON_DOWN-1, 0.5 -pid.roll/2.0);
   #endif
 
-  //elevator: when PIDpitch.PID is positive -> pitch up -> deflect elevator down 
+  //elevator: when pid.pitch is positive -> pitch up -> deflect elevator down 
   #ifdef OUT_ELEVATOR_DOWN //elevator deflects down on high pwm
-    out.set(OUT_ELEVATOR_UP-1, +PIDpitch.PID/2.0 + 0.5);
+    out.set(OUT_ELEVATOR_UP-1, +pid.pitch/2.0 + 0.5);
   #endif
   #ifdef OUT_ELEVATOR_UP //reversed: elevator deflects up on high pwm
-    out.set(OUT_ELEVATOR_UP-1, -PIDpitch.PID/2.0 + 0.5);
+    out.set(OUT_ELEVATOR_UP-1, -pid.pitch/2.0 + 0.5);
   #endif
 
-  //rudder: when PIDyaw.PID is positive -> yaw right -> deflect rudder right
+  //rudder: when pid.yaw is positive -> yaw right -> deflect rudder right
   #ifdef OUT_RUDDER_RIGHT //rudder deflects right on high pwm 
-    out.set(OUT_RUDDER_RIGHT-1, +PIDyaw.PID/2.0 + 0.5);
+    out.set(OUT_RUDDER_RIGHT-1, +pid.yaw/2.0 + 0.5);
   #endif  
   #ifdef OUT_RUDDER_LEFT //reversed: rudder deflects left on high pwm
-    out.set(OUT_RUDDER_LEFT-1, -PIDyaw.PID/2.0 + 0.5);
+    out.set(OUT_RUDDER_LEFT-1, -pid.yaw/2.0 + 0.5);
   #endif
 
   //flaps: (rcin_flaps 0.0:up, 1.0:full down)
@@ -428,19 +428,19 @@ void out_Mixer() {
   #endif 
 
   //delta wing:
-  // when PIDroll.PID positive -> roll right -> deflect left elevon down, deflect right elevon up
-  // when PIDpitch.PID is positive -> pitch up -> deflect left elevon down, deflect right elevon down 
+  // when pid.roll positive -> roll right -> deflect left elevon down, deflect right elevon up
+  // when pid.pitch is positive -> pitch up -> deflect left elevon down, deflect right elevon down 
   #ifdef OUT_LEFT_ELEVON_DOWN //left elevon deflects down on high input
-    out.set(OUT_LEFT_ELEVON_DOWN-1, 0.5 +PIDroll.PID/2.0 +PIDpitch.PID/2.0);
+    out.set(OUT_LEFT_ELEVON_DOWN-1, 0.5 +pid.roll/2.0 +pid.pitch/2.0);
   #endif
   #ifdef OUT_RIGHT_ELEVON_UP //right elevon deflects up on high input
-    out.set(OUT_RIGHT_ELEVON_UP-1, 0.5 +PIDroll.PID/2.0 -PIDpitch.PID/2.0);
+    out.set(OUT_RIGHT_ELEVON_UP-1, 0.5 +pid.roll/2.0 -pid.pitch/2.0);
   #endif
   #ifdef OUT_LEFT_ELEVON_UP //reversed: left elevon deflects down on high input
-    out.set(OUT_LEFT_ELEVON_UP-1, 0.5 -PIDroll.PID/2.0 -PIDpitch.PID/2.0);
+    out.set(OUT_LEFT_ELEVON_UP-1, 0.5 -pid.roll/2.0 -pid.pitch/2.0);
   #endif  
   #ifdef OUT_RIGHT_ELEVON_DOWN //reversed: right elevon deflects down on high input
-    out.set(OUT_RIGHT_ELEVON_DOWN-1, 0.5 -PIDroll.PID/2.0 +PIDpitch.PID/2.0);
+    out.set(OUT_RIGHT_ELEVON_DOWN-1, 0.5 -pid.roll/2.0 +pid.pitch/2.0);
   #endif 
 
   //0.0 is zero throttle if connecting to ESC for conventional PWM, 1.0 is max throttle

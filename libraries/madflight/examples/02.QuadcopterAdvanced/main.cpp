@@ -34,11 +34,11 @@ Arming/disarming with sticks (when no arm switch is defined, i.e. cfg.rcl_arm_ch
 LED State                              Meaning
 ---------                              -------
 OFF                                    Not powered
-ON                                     Startup (don't move, running gyro calibration)
-Blinking long OFF short ON             DISARMED
-Blinking long ON short OFF             ARMED
+ON (blue)                              Startup (don't move, running gyro calibration)
+Blinking long OFF short ON (green)     DISARMED
+Blinking long ON short OFF (red)       ARMED
 Blink interval longer than 1 second    imu_loop() is taking too much time
-fast blinking                          Something is wrong, connect USB serial for info
+Fast blinking                          Something is wrong, connect USB serial for info
 
 MIT license
 Copyright (c) 2023-2025 https://madflight.com
@@ -49,7 +49,7 @@ Copyright (c) 2023-2025 https://madflight.com
 #define VEH_FLIGHTMODE_AP_IDS {AP_COPTER_FLIGHTMODE_ACRO, AP_COPTER_FLIGHTMODE_STABILIZE} //mapping of fightmode index to ArduPilot code for logging and mavlink
 #define VEH_FLIGHTMODE_NAMES {"RATE", "ANGLE"} //fightmode names for telemetry
 enum flightmode_enum { RATE, ANGLE };  //the available flightmode indexes
-flightmode_enum rcin_to_flightmode_map[6] {RATE, RATE, RATE, RATE, ANGLE, ANGLE}; //flightmode mapping from 2/3/6 pos switch to flight mode (simulates a 2-pos switch: RATE/ANGLE)
+flightmode_enum rcl_to_flightmode_map[6] {RATE, RATE, RATE, RATE, ANGLE, ANGLE}; //flightmode mapping from 2/3/6 pos switch to flight mode (simulates a 2-pos switch: RATE/ANGLE)
 
 #include "madflight_config.h" //Edit this header file to setup the pins, hardware, radio, etc. for madflight
 #include <madflight.h>
@@ -170,7 +170,7 @@ void imu_loop() {
 
   //Get radio commands - Note: don't do this in loop() because loop() is a lower priority task than imu_loop(), so in worst case loop() will not get any processor time.
   rcl.update();
-  if(rcl.connected() && veh.setFlightmode( rcin_to_flightmode_map[rcl.flightmode] )) { //map rcl.flightmode (0 to 5) to vehicle flightmode
+  if(rcl.connected() && veh.setFlightmode( rcl_to_flightmode_map[rcl.flightmode] )) { //map rcl.flightmode (0 to 5) to vehicle flightmode
     Serial.printf("Flightmode:%s\n",veh.flightmode_name());
   }
 
@@ -250,14 +250,14 @@ void control_Angle(bool zero_integrators) {
   integral_roll += error_roll * imu.dt;
   integral_roll = constrain(integral_roll, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
   float derivative_roll = ahr.gx;
-  PIDroll.PID = 0.01 * (Kp_ro_pi_angle*error_roll + Ki_ro_pi_angle*integral_roll - Kd_ro_pi_angle*derivative_roll); //Scaled by .01 to bring within -1 to 1 range
+  pid.roll = 0.01 * (Kp_ro_pi_angle*error_roll + Ki_ro_pi_angle*integral_roll - Kd_ro_pi_angle*derivative_roll); //Scaled by .01 to bring within -1 to 1 range
 
   //Pitch PID
   float error_pitch = pitch_des - ahr.pitch;
   integral_pitch += error_pitch * imu.dt;
   integral_pitch = constrain(integral_pitch, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
   float derivative_pitch = ahr.gy; 
-  PIDpitch.PID = 0.01 * (Kp_ro_pi_angle*error_pitch + Ki_ro_pi_angle*integral_pitch - Kd_ro_pi_angle*derivative_pitch); //Scaled by .01 to bring within -1 to 1 range
+  pid.pitch = 0.01 * (Kp_ro_pi_angle*error_pitch + Ki_ro_pi_angle*integral_pitch - Kd_ro_pi_angle*derivative_pitch); //Scaled by .01 to bring within -1 to 1 range
 
   //Yaw PID
   if(-0.02 < rcl.yaw && rcl.yaw < 0.02) {
@@ -268,7 +268,7 @@ void control_Angle(bool zero_integrators) {
     float error_yaw = degreeModulus(yaw_desired - ahr.yaw);
     float desired_yawRate = error_yaw / 0.5; //set desired yawRate such that it gets us to desired yaw in 0.5 second
     float derivative_yaw = desired_yawRate - ahr.gz;
-    PIDyaw.PID = 0.01 * (Kp_yaw_angle*error_yaw + Kd_yaw_angle*derivative_yaw); //Scaled by .01 to bring within -1 to 1 range
+    pid.yaw = 0.01 * (Kp_yaw_angle*error_yaw + Kd_yaw_angle*derivative_yaw); //Scaled by .01 to bring within -1 to 1 range
 
     //update yaw rate controller
     error_yawRate_prev = 0;
@@ -278,7 +278,7 @@ void control_Angle(bool zero_integrators) {
     integral_yawRate += error_yawRate * imu.dt;
     integral_yawRate = constrain(integral_yawRate, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
     float derivative_yawRate = (error_yawRate - error_yawRate_prev) / imu.dt; 
-    PIDyaw.PID = 0.01 * (Kp_yaw_rate*error_yawRate + Ki_yaw_rate*integral_yawRate + Kd_yaw_rate*derivative_yawRate); //Scaled by .01 to bring within -1 to 1 range
+    pid.yaw = 0.01 * (Kp_yaw_rate*error_yawRate + Ki_yaw_rate*integral_yawRate + Kd_yaw_rate*derivative_yawRate); //Scaled by .01 to bring within -1 to 1 range
 
     //Update derivative variables
     error_yawRate_prev = error_yawRate;
@@ -317,21 +317,21 @@ void control_Rate(bool zero_integrators) {
   integral_roll += error_roll * imu.dt;
   integral_roll = constrain(integral_roll, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
   float derivative_roll = (error_roll - error_roll_prev) / imu.dt;
-  PIDroll.PID = 0.01 * (Kp_ro_pi_rate*error_roll + Ki_ro_pi_rate*integral_roll + Kd_ro_pi_rate*derivative_roll); //Scaled by .01 to bring within -1 to 1 range
+  pid.roll = 0.01 * (Kp_ro_pi_rate*error_roll + Ki_ro_pi_rate*integral_roll + Kd_ro_pi_rate*derivative_roll); //Scaled by .01 to bring within -1 to 1 range
 
   //Pitch
   float error_pitch = pitchRate_des - ahr.gy;
   integral_pitch += error_pitch * imu.dt;
   integral_pitch = constrain(integral_pitch, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
   float derivative_pitch = (error_pitch - error_pitch_prev) / imu.dt;   
-  PIDpitch.PID = 0.01 * (Kp_ro_pi_rate*error_pitch + Ki_ro_pi_rate*integral_pitch + Kd_ro_pi_rate*derivative_pitch); //Scaled by .01 to bring within -1 to 1 range
+  pid.pitch = 0.01 * (Kp_ro_pi_rate*error_pitch + Ki_ro_pi_rate*integral_pitch + Kd_ro_pi_rate*derivative_pitch); //Scaled by .01 to bring within -1 to 1 range
 
   //Yaw, stablize on rate from GyroZ
   float error_yaw = yawRate_des - ahr.gz;
   integral_yaw += error_yaw * imu.dt;
   integral_yaw = constrain(integral_yaw, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
   float derivative_yaw = (error_yaw - error_yaw_prev) / imu.dt; 
-  PIDyaw.PID = 0.01 * (Kp_yaw_rate*error_yaw + Ki_yaw_rate*integral_yaw + Kd_yaw_rate*derivative_yaw); //Scaled by .01 to bring within -1 to 1 range
+  pid.yaw = 0.01 * (Kp_yaw_rate*error_yaw + Ki_yaw_rate*integral_yaw + Kd_yaw_rate*derivative_yaw); //Scaled by .01 to bring within -1 to 1 range
 
   //Update derivative variables
   error_roll_prev = error_roll;
@@ -405,9 +405,9 @@ Yaw right               (CCW+ CW-)       -++-
     out.set(3, thr);
   }else{
     // Quad mixing
-    out.set(0, thr - PIDpitch.PID - PIDroll.PID - PIDyaw.PID); //M1 Back Right CW
-    out.set(1, thr + PIDpitch.PID - PIDroll.PID + PIDyaw.PID); //M2 Front Right CCW
-    out.set(2, thr - PIDpitch.PID + PIDroll.PID + PIDyaw.PID); //M3 Back Left CCW
-    out.set(3, thr + PIDpitch.PID + PIDroll.PID - PIDyaw.PID); //M4 Front Left CW
+    out.set(0, thr - pid.pitch - pid.roll - pid.yaw); //M1 Back Right CW
+    out.set(1, thr + pid.pitch - pid.roll + pid.yaw); //M2 Front Right CCW
+    out.set(2, thr - pid.pitch + pid.roll + pid.yaw); //M3 Back Left CCW
+    out.set(3, thr + pid.pitch + pid.roll - pid.yaw); //M4 Front Left CW
   }
 }

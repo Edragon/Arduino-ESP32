@@ -2,7 +2,7 @@
 
 ## Description
 This is an Arduino library for controlling ws2812b led on esp32.
-
+Please note that our library supports ESP32 package versions up to 3.0.0.
 Based on the example program "led_strip" in IDF-SDK. The source code repository is here:
 https://github.com/espressif/esp-idf/tree/master/examples/peripherals/rmt/led_strip
 

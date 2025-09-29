@@ -1,7 +1,7 @@
 /*==========================================================================================
 MIT License
 
-Copyright (c) 2023-2025 https://madflight.com
+Copyright (c) 2025 https://madflight.com
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,19 +24,4 @@ SOFTWARE.
 
 #include "pid.h"
 
-PID PIDroll;
-PID PIDpitch;
-PID PIDyaw;
-
-
-float PID::control(float actual, float desired, float dt) {
-  float err = desired - actual;
-  err_i += err * dt;
-  //Saturate integrator to prevent unsafe buildup
-  if(err_i < -klimit_i) err_i = -klimit_i;
-  if(err_i > klimit_i) err_i = klimit_i;
-  float err_d = (err - err_prev) / dt;
-  PID = kscale * (kp * err + ki * err_i + kd * err_d);
-  err_prev = err;
-  return PID;
-}
+Pid pid;

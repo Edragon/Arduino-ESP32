@@ -183,7 +183,7 @@ SOFTWARE.
   MF_PARAM( ahr_gizmo,         0, int32_t, 'e', mf_MAHONY,mf_MAHONY_BF,mf_MADGWICK,mf_VQF) \
 \
   /*BAR - Barometer*/ \
-  MF_PARAM( bar_gizmo,         0, int32_t, 'e', mf_NONE,mf_BMP280,mf_BMP388,mf_BMP390,mf_MS5611,mf_HP203B,mf_BMP580) \
+  MF_PARAM( bar_gizmo,         0, int32_t, 'e', mf_NONE,mf_BMP280,mf_BMP388,mf_BMP390,mf_MS5611,mf_HP203B,mf_BMP580,mf_DPS310) \
   MF_PARAM( bar_i2c_bus,      -1, int32_t, 'i') \
   MF_PARAM( bar_i2c_adr,       0, int32_t, 'i') \
   MF_PARAM( bar_rate,        100, float, 'f') /*Barometer sample rate in Hz (default 100)*/ \
@@ -203,7 +203,7 @@ SOFTWARE.
   MF_PARAM( gps_baud,          0, int32_t, 'i') \
 \
   /*IMU - Inertial Measurement Unit (acc/gyro)*/ \
-  MF_PARAM( imu_gizmo,         0, int32_t, 'e', mf_NONE,mf_BMI270,mf_MPU6000,mf_MPU6050,mf_MPU6500,mf_MPU9150,mf_MPU9250,mf_ICM45686,mf_ICM42688) \
+  MF_PARAM( imu_gizmo,         0, int32_t, 'e', mf_NONE,mf_BMI270,mf_MPU6000,mf_MPU6050,mf_MPU6500,mf_MPU9150,mf_MPU9250,mf_ICM45686,mf_ICM42688,mf_ICM42688P) \
   MF_PARAM( imu_spi_bus,      -1, int32_t, 'i') \
   MF_PARAM( imu_i2c_bus,      -1, int32_t, 'i') \
   MF_PARAM( imu_i2c_adr,       0, int32_t, 'i') \
@@ -229,7 +229,7 @@ SOFTWARE.
   MF_PARAM( rcl_deadband,      0, int32_t, 'i') \
 \
   /*RDR - Radar*/ \
-  MF_PARAM( rdr_gizmo,         0, int32_t, 'e', mf_NONE,mf_LD2411S,mf_LD2413,mf_USD1,mf_SR04) \
+  MF_PARAM( rdr_gizmo,         0, int32_t, 'e', mf_NONE,mf_LD2411S,mf_LD2413,mf_USD1,mf_SR04,mf_DTS6012M) \
   MF_PARAM( rdr_ser_bus,      -1, int32_t, 'i') \
   MF_PARAM( rdr_baud,          0, int32_t, 'i') \
 \
@@ -240,6 +240,19 @@ SOFTWARE.
 \
   /*v2.1.1 additions */ \
   MF_PARAM( mag_align,         0, int32_t, 'e', mf_CW0,mf_CW90,mf_CW180,mf_CW270,mf_CW0FLIP,mf_CW90FLIP,mf_CW180FLIP,mf_CW270FLIP) \
+\
+  /*v2.1.3 additions */ \
+  MF_PARAM( ofl_gizmo,         0, int32_t, 'e', mf_NONE,mf_PMW3901,mf_PMW3901U) \
+  MF_PARAM( ofl_spi_bus,      -1, int32_t, 'i') \
+  MF_PARAM( pin_ofl_cs,       -1, int32_t, 'p') \
+  MF_PARAM( ofl_ser_bus,      -1, int32_t, 'i') \
+  MF_PARAM( ofl_baud,          0, int32_t, 'i') \
+  MF_PARAM( rdr_i2c_bus,      -1, int32_t, 'i') \
+  MF_PARAM( rdr_i2c_adr,       0, int32_t, 'i') \
+  MF_PARAM( ofl_align,         0, int32_t, 'e', mf_NE,mf_NW,mf_ES,mf_EN,mf_SW,mf_SE,mf_WN,mf_WS) /* xy-axis orientation. Example: ES means positive x-axis points East (right) and positive y-axis points South (back) */ \
+\
+  /*v2.1.4 additions */ \
+  MF_PARAM( ofl_cal_rad,       0, float, 'f') /*manual calibration factor from pixels to radians, leave at 0 to use calibration from gizmo*/ \
 //end MF_PARAM_LIST
 
 
@@ -274,17 +287,9 @@ namespace Cfg {
 //struct CfgParam for parameters, generated from MF_PARAM_LIST
 #define MF_PARAM(name, defval, datatype, type, ...) datatype name = defval;
 struct CfgParam {
-  union {
-    struct {
-      MF_PARAM_LIST
-    };
-    float param_float[Cfg::param_cnt];
-    int32_t param_int32_t[Cfg::param_cnt];
-  };
+  MF_PARAM_LIST
 };
 #undef MF_PARAM
-
-
 
 
 
@@ -313,26 +318,29 @@ private:
 public:
   CfgClass();
   void begin();
+
+  //indexed parameter manipulation
   uint16_t paramCount(); //get number of parameters
+  int getIndex(String namestr); //get parameter index for a parameter name
   bool getNameAndValue(uint16_t index, String* name, float* value); //get parameter name and value for index
 
+  //named parameter manipulation
   bool setParam(String namestr, String val); //CLI set a parameter value, returns true on success
   bool setParamMavlink(String namestr, float val); //set a parameter value, returns true on success
-  int getIndex(String namestr); //get parameter index for a parameter name
+  float getValue(String namestr, float default_value); //get parameter as float
+
+  //loading and saving
   void clear(); //load defaults from param_list
   void loadFromEeprom(); //read parameters from eeprom/flash
   void loadFromString(const char *batch); //load text unconditional
   void load_madflight(const char *board, const char *config); //load board+config if crc is different
   void writeToEeprom(); //write config to flash
-  float getValue(String namestr, float default_value); //get parameter as float
-  float getValue(int i); //get parameter as float
 
   //CLI commands
   void cli_dump(const char* filter = nullptr); //CLI dump: print all config values
   void cli_diff(const char* filter = nullptr); //CLI diff: print all modified config values
 
   //print
-  void printParamOption(const int32_t* param);
   bool getOptionString(uint16_t param_idx, int32_t param_val, char out_option[20]);
   void printPins();
   void printModule(const char* module_name);
@@ -343,6 +351,8 @@ private:
   bool load_cmdline(String cmdline);
   int get_enum_index(const char* k, const char* values);
   void print_options(const char *str); //print option list without "mf_"
+  float getValue(int i); //get parameter as float
+  bool setValue(int i, float val); //set parameter value
 };
 
 extern CfgClass cfg;

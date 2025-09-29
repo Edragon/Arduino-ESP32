@@ -1,7 +1,3 @@
-#define MADFLIGHT_VERSION "madflight v2.1.2"
-
-//madflight.h - Flight Controller for ESP32 / ESP32-S3 / RP2350 / RP2040 / STM32
-
 /*==========================================================================================
 MIT License
 
@@ -26,11 +22,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ===========================================================================================*/
 
+//madflight.h - Flight Controller for ESP32 / ESP32-S3 / RP2350 / RP2040 / STM32
+
 //#pragma once //don't use here, we want to get an error if this file is included twice
 
-#include <Arduino.h> //keep PlatformIO happy
-
-extern const char madflight_config[]; //madflight_config should be defined before including this file
+extern const char madflight_config[];
 
 #ifdef MF_BOARD
   //the board header file must define const char madflight_board[] and should define MF_BOARD_NAME, MF_MCU_NAME
@@ -39,33 +35,42 @@ extern const char madflight_config[]; //madflight_config should be defined befor
   const char madflight_board[] = "";
 #endif
 
+#ifndef ALT_USE
+  #define ALT_USE ALT_USE_KALMAN3
+#endif
+
+#include <Arduino.h> //keep PlatformIO happy
+#include "madflight_version.h"
+
 // bus abstraction
 #include "hal/MF_Serial.h"
 #include "hal/MF_I2C.h"
 
 // include all "_cpp.h" modules which have compile time config options
 #define MF_ALLOW_INCLUDE_CCP_H
-#include "alt/alt_cpp.h" //TODO - convert to use gizmos
+#include "alt/alt_cpp.h" //Altitude estimator (TODO - convert to use gizmos)
 #include "hal/hal_cpp.h"
 #include "imu/imu_cpp.h" //for IMU_EXEC
 #undef MF_ALLOW_INCLUDE_CCP_H
 
 // include all other modules without compile time config options
-#include "ahr/ahr.h"
-#include "cfg/cfg.h"
-#include "cli/cli.h"
-#include "bar/bar.h"
-#include "bat/bat.h"
-#include "bbx/bbx.h"
-#include "gps/gps.h"
-#include "led/led.h"
-#include "lua/lua.h"
-#include "mag/mag.h"
-#include "out/out.h"
-#include "pid/pid.h"
-#include "rcl/rcl.h"
-#include "rdr/rdr.h"
-#include "veh/veh.h"
+#include "ahr/ahr.h" //AHRS
+#include "cfg/cfg.h" //Config
+#include "cli/cli.h" //Command Line Interface
+#include "bar/bar.h" //Barometer sensor
+#include "bat/bat.h" //Battery sensor
+#include "bbx/bbx.h" //Blackbox SDCARD
+#include "gps/gps.h" //GPS
+#include "led/led.h" //LED
+#include "lua/lua.h" //Lua scripting
+#include "mag/mag.h" //Magnetometer sensor
+#include "ofl/ofl.h" //Optical flow sensor
+#include "out/out.h" //Outputs (motor, servo)
+#include "pid/pid.h" //PIDController control
+#include "rcl/rcl.h" //RC radio link
+#include "rdr/rdr.h" //Radar, lidar, ultrasonic sensors
+#include "tbx/tbx.h" //Toolbox common tools
+#include "veh/veh.h" //Vehicle info
 
 // toolbox
 #include "tbx/RuntimeTrace.h"
@@ -79,8 +84,6 @@ void madflight_warn_or_die(String msg, bool die);
 // madflight_setup()
 //===============================================================================================
 
-
-
 // vehicle setup by defines VEH_TYPE, VEH_FLIGHTMODE_AP_IDS, VEH_FLIGHTMODE_NAMES
 #ifndef VEH_TYPE
   #define VEH_TYPE VEH_TYPE_GENERIC
@@ -93,13 +96,13 @@ void madflight_warn_or_die(String msg, bool die);
 #endif
 const uint8_t Veh::mav_type = VEH_TYPE; //mavlink vehicle type
 const uint8_t Veh::flightmode_ap_ids[6] = VEH_FLIGHTMODE_AP_IDS; //mapping from flightmode to ArduPilot flight mode id
-const char* Veh::flightmode_names[6] = VEH_FLIGHTMODE_NAMES; //[6] define flightmode name strings for telemetry
+const char* Veh::flightmode_names[6] = VEH_FLIGHTMODE_NAMES; //define flightmode name strings for telemetry
 
 void madflight_setup() {
   Serial.begin(115200); //start console serial
-
-  // CFG - Configuration parameters
-  cfg.begin(); 
+  
+  // CFG - Configuration parameters (execute before delay to start LED)
+  cfg.begin();
   #ifdef MF_CONFIG_CLEAR
     cfg.clear();
     cfg.writeToEeprom();
@@ -135,11 +138,12 @@ void madflight_setup() {
     Serial.println("Processor: " MF_MCU_NAME);
   #endif
 
-  #ifdef MF_DEBUG
-    //Serial.println("\nDEBUG: cfg.list() ================\n");
-    //cfg.list();
-  #endif
+  // Rerun CFG to show output after startup delay
+  cfg.clear();
+  cfg.loadFromEeprom(); //load parameters from EEPROM
+  cfg.load_madflight(madflight_board, madflight_config); //load config
 
+  // Pins sorted by GPIO number
   cfg.printPins();
 
   // HAL - Hardware abstraction layer setup: serial, spi, i2c (see hal.h)
@@ -182,11 +186,23 @@ void madflight_setup() {
 
   //RDR
   rdr.config.gizmo = (Cfg::rdr_gizmo_enum)cfg.rdr_gizmo; //the gizmo to use
-  rdr.config.ser_bus_id = cfg.rdr_ser_bus; //serial bus
-  rdr.config.baud = cfg.rdr_baud; //baud rate
-  rdr.config.pin_trig = cfg.pin_rdr_trig;
-  rdr.config.pin_echo = cfg.pin_rdr_echo;
+  rdr.config.rdr_ser_bus  = cfg.rdr_ser_bus; //serial bus
+  rdr.config.rdr_baud     = cfg.rdr_baud; //baud rate
+  rdr.config.pin_rdr_trig = cfg.pin_rdr_trig;
+  rdr.config.pin_rdr_echo = cfg.pin_rdr_echo;
+  rdr.config.rdr_i2c_bus  = cfg.rdr_i2c_bus;
+  rdr.config.rdr_i2c_adr  = cfg.rdr_i2c_adr;
   rdr.setup();
+
+  //OFL
+  ofl.config.ofl_gizmo    = (Cfg::ofl_gizmo_enum)cfg.ofl_gizmo; //the gizmo to use
+  ofl.config.ofl_spi_bus  = cfg.ofl_spi_bus; // spi bus
+  ofl.config.pin_ofl_cs   = cfg.pin_ofl_cs;  // spi cs pin
+  ofl.config.ofl_ser_bus  = cfg.ofl_ser_bus; // serial bus
+  ofl.config.ofl_baud     = cfg.ofl_baud;    // baud rate (0 = default)
+  ofl.config.ofl_align    = (Cfg::ofl_align_enum)cfg.ofl_align;  // xy-axis orientation. Example: ES means positive x-axis points East (right) and positive y-axis points South (back)
+  ofl.config.ofl_cal_rad  = cfg.ofl_cal_rad; // manual calibration factor from pixels to radians, leave at 0 to use calibration from gizmo
+  ofl.setup();
 
   // GPS
   gps.config.gizmo = (Cfg::gps_gizmo_enum)cfg.gps_gizmo; //the gizmo to use
@@ -204,7 +220,11 @@ void madflight_setup() {
   bbx.setup();
 
   // ALT - Altitude Estimator
-  alt.setup(bar.alt); 
+  if(rdr.installed()) {
+    alt.setup(rdr.dist);
+  }else{
+    alt.setup(bar.alt);
+  }
 
   // AHR - setup low pass filters for AHRS filters
   ahr.config.gizmo = (Cfg::ahr_gizmo_enum)cfg.ahr_gizmo; //the gizmo to use

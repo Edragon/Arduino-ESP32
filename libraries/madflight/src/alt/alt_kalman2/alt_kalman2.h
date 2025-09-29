@@ -29,9 +29,9 @@ SOFTWARE.
 
 class AltEst_Kalman2 : public AltEst {
 public:
-  void setup(float alt) {\
+  void setup(float alt) {
     //default parameters
-    float altCov = 0.2;  //meadured stdev BME280 = 0.4 [m]
+    float altCov = 0.2;  //measured stdev BME280 = 0.4 [m]
     float accCov = 0.01; //measured stdev MPU6500 @ 16G = 0.003 [G]
 
     Serial.printf("ALT: KALMAN2  altCov=%f accCov=%f\n", altCov, accCov);

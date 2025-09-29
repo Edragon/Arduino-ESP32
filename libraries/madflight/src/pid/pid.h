@@ -1,7 +1,7 @@
 /*==========================================================================================
 MIT License
 
-Copyright (c) 2023-2025 https://madflight.com
+Copyright (c) 2025 https://madflight.com
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,22 +24,15 @@ SOFTWARE.
 
 #pragma once
 
-class PID {
+#include "PIDController.h"
+#include "FilterLowPass.h"
+
+class Pid {
   public:
-    float PID = 0; //PID output value
-
-    float err_i = 0; //integral error
-    float err_prev = 0; //previous error
-
-    float kp = 0; //Kp
-    float ki = 0; //Ki
-    float kd = 0; //Kd
-    float kscale = 1; //scale factor
-    float klimit_i = 0; //err_i is limited to -limit_i to +limit_i
-    
-    float control(float actual, float desired, float dt);
+    //PIDController outputs for CLI
+    float roll = 0;
+    float pitch = 0;
+    float yaw = 0;
 };
 
-extern PID PIDroll;
-extern PID PIDpitch;
-extern PID PIDyaw;
+extern Pid pid;

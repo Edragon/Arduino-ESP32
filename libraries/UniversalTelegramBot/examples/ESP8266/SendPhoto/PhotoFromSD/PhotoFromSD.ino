@@ -11,100 +11,120 @@
 #include <SPI.h>
 #include <SD.h>
 
-// Initialize Wifi connection to the router
-char ssid[] = "XXXXXX";     // your network SSID (name)
-char password[] = "YYYYYY"; // your network key
+// Wifi network station credentials
+#define WIFI_SSID "YOUR_SSID"
+#define WIFI_PASSWORD "YOUR_PASSWORD"
+// Telegram BOT Token (Get from Botfather)
+#define BOT_TOKEN "XXXXXXXXX:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
-// Initialize Telegram BOT
-#define BOTtoken "XXXXXXXXX:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"  // your Bot Token (Get from Botfather)
+const unsigned long BOT_MTBS = 1000; // mean time between scan messages
 
-WiFiClientSecure client;
-UniversalTelegramBot bot(BOTtoken, client);
-
-int Bot_mtbs = 1000; //mean time between scan messages
-long Bot_lasttime;   //last time messages' scan has been done
+unsigned long bot_lasttime;          // last time messages' scan has been done
+X509List cert(TELEGRAM_CERTIFICATE_ROOT);
+WiFiClientSecure secured_client;
+UniversalTelegramBot bot(BOT_TOKEN, secured_client);
 
 File myFile;
 bool isMoreDataAvailable();
 byte getNextByte();
 
-void setup() {
-  Serial.begin(115200);
-
-  Serial.print("Initializing SD card....");
-
-  if (!SD.begin(D0)) {
-    Serial.println("failed!");
-    return;
-  }
-
-  Serial.println("done.");
-
-  // Set WiFi to station mode and disconnect from an AP if it was Previously connected
-  WiFi.mode(WIFI_STA);
-  WiFi.disconnect();
-  delay(100);
-
-  // attempt to connect to Wifi network:
-  Serial.print("Connecting Wifi: ");
-  Serial.println(ssid);
-  WiFi.begin(ssid, password);
-
-  while (WiFi.status() != WL_CONNECTED) {
-    Serial.print(".");
-    delay(500);
-  }
-
-  Serial.println("");
-  Serial.println("WiFi connected");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
-}
-
-void loop() {
-  if (millis() > Bot_lasttime + Bot_mtbs)  {
-    int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
-
-    while(numNewMessages) {
-      Serial.println("got response");
-
-      String chat_id = bot.messages[0].chat_id;
-      String file_name = "box.jpg";
-
-      myFile = SD.open(file_name);
-
-      if (myFile) {
-        Serial.print(file_name);
-        Serial.print("....");
-
-        //Content type for PNG image/png
-        String sent = bot.sendPhotoByBinary(chat_id, "image/jpeg", myFile.size(),
-            isMoreDataAvailable,
-            getNextByte);
-
-        if (sent) {
-          Serial.println("was successfully sent");
-        } else {
-          Serial.println("was not sent");
-        }
-
-        myFile.close();
-      } else {
-        // if the file didn't open, print an error:
-        Serial.println("error opening photo");
-      }
-
-      numNewMessages = bot.getUpdates(bot.last_message_received + 1);
-    }
-
-    Bot_lasttime = millis();
-  }
-}
-
-bool isMoreDataAvailable(){
+bool isMoreDataAvailable()
+{
   return myFile.available();
 }
 
-byte getNextByte(){
+byte getNextByte()
+{
   return myFile.read();
+}
+
+void handleNewMessages(int numNewMessages)
+{
+  String chat_id = bot.messages[0].chat_id;
+  String file_name = "box.jpg";
+
+  myFile = SD.open(file_name);
+
+  if (myFile)
+  {
+    Serial.print(file_name);
+    Serial.print("....");
+
+    //Content type for PNG image/png
+    String sent = bot.sendPhotoByBinary(chat_id, "image/jpeg", myFile.size(),
+                                        isMoreDataAvailable,
+                                        getNextByte, nullptr, nullptr);
+
+    if (sent)
+    {
+      Serial.println("was successfully sent");
+    }
+    else
+    {
+      Serial.println("was not sent");
+    }
+
+    myFile.close();
+  }
+  else
+  {
+    // if the file didn't open, print an error:
+    Serial.println("error opening photo");
+  }
+}
+
+void setup()
+{
+  Serial.begin(115200);
+  Serial.println();
+
+  Serial.print("Initializing SD card....");
+  if (!SD.begin(D0))
+  {
+    Serial.println("failed!");
+    return;
+  }
+  Serial.println("done.");
+
+  // attempt to connect to Wifi network:
+  configTime(0, 0, "pool.ntp.org");      // get UTC time via NTP
+  secured_client.setTrustAnchors(&cert); // Add root certificate for api.telegram.org
+  Serial.print("Connecting to Wifi SSID ");
+  Serial.print(WIFI_SSID);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    Serial.print(".");
+    delay(500);
+  }
+  Serial.print("\nWiFi connected. IP address: ");
+  Serial.println(WiFi.localIP());
+
+  // Check NTP/Time, usually it is instantaneous and you can delete the code below.
+  Serial.print("Retrieving time: ");
+  time_t now = time(nullptr);
+  while (now < 24 * 3600)
+  {
+    Serial.print(".");
+    delay(100);
+    now = time(nullptr);
+  }
+  Serial.println(now);
+}
+
+void loop()
+{
+  if (millis() - bot_lasttime > BOT_MTBS)
+  {
+    int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
+
+    while (numNewMessages)
+    {
+      Serial.println("got response");
+      handleNewMessages(numNewMessages);
+      numNewMessages = bot.getUpdates(bot.last_message_received + 1);
+    }
+
+    bot_lasttime = millis();
+  }
 }

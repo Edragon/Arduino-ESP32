@@ -146,7 +146,8 @@ int Imu::setup() {
         gizmo->has_mag = false;
         break;
       }
-      case Cfg::imu_gizmo_enum::mf_ICM42688 : {
+      case Cfg::imu_gizmo_enum::mf_ICM42688 :
+      case Cfg::imu_gizmo_enum::mf_ICM42688P : {
         gizmo = ImuGizmoICM426XX::create(&config, (ImuState*)this);
         break;
       }
@@ -388,6 +389,10 @@ void _imu_ll_interrupt_handler();
   void _imu_ll_interrupt_setup(int interrupt_pin) {
     Serial.println(MF_MOD ": IMU_EXEC_IRQ");
     attachInterrupt(digitalPinToInterrupt(interrupt_pin), _imu_ll_interrupt_handler, RISING);
+    #if MF_HACK_STM32_INTERRUPT_PRIORITY
+      // (#79) on stm32, set the interrupt to the highest priority, otherwise it does not get called
+      HAL_NVIC_SetPriority(hal_get_irqn_from_pin(interrupt_pin), 0, 0);
+    #endif
   }
 
   inline void _imu_ll_interrupt_handler2() {

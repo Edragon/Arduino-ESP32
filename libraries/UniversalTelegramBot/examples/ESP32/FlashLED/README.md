@@ -1,6 +1,6 @@
-#ESP8266 - Flash LED
+#ESP32 - Flash LED
 
-This is a basic example of how to receive commands using UniversalTelegramBot for ESP8266 based boards.
+This is a basic example of how to receive commands using UniversalTelegramBot for ESP32 based boards.
 
 The application will turn on and off an LED based on commands received via telegram.
 

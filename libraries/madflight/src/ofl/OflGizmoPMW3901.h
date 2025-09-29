@@ -1,0 +1,96 @@
+/*==========================================================================================
+MIT License
+
+Copyright (c) 2025 https://madflight.com
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+===========================================================================================*/
+
+// PMW3901 SPI driver
+
+#pragma once
+
+#include "ofl.h"
+#include "../hal/hal.h"
+#include "../tbx/ScheduleFreq.h"
+#include "PWM3901/Bitcraze_PMW3901.h"
+
+class OflGizmoPMW3901: public OflGizmo {
+private:
+  OflState *state;
+  Bitcraze_PMW3901 *sensor = nullptr;
+
+  // sensor update rate is approx 6ms (166Hz) but no status flag/interrupt to know when a measurement took place. Sensor returns 0,0 when busy, but 0,0 could also mean "new measurement, but no movement".
+  // we measure at a 100Hz schedule to have least 1 new measurement
+  ScheduleFreq schedule_100Hz = ScheduleFreq(100);
+
+  OflGizmoPMW3901() {} //private constructor
+
+public:
+  ~OflGizmoPMW3901() {
+    delete sensor;
+  }
+
+  static OflGizmoPMW3901* create(OflConfig *config, OflState *state) {
+      //get spi bus
+      if(config->pin_ofl_cs < 0) {
+        Serial.println("OFL: ERROR PMW3901 pin_ofl_cs not defined");
+        return nullptr;
+      }
+      SPIClass *spi_bus = hal_get_spi_bus(config->ofl_spi_bus);
+      if(!spi_bus) {
+        Serial.println("OFL: ERROR PMW3901 spi_bus_id not defined");
+        return nullptr;
+      }
+
+      //try to start sensor
+      Bitcraze_PMW3901 *sensor = new Bitcraze_PMW3901(spi_bus, config->pin_ofl_cs);
+      if(!sensor->begin()) {
+        Serial.println("OFL: ERROR PMW3901 wai incorrect, check wiring");
+        delete sensor;
+        sensor = nullptr;
+        return nullptr;
+      }
+
+      //setup gizmo
+      auto gizmo = new OflGizmoPMW3901();
+      gizmo->state = state;
+      gizmo->sensor = sensor;
+
+      //set default calibration
+      if(config->ofl_cal_rad == 0) {
+        config->ofl_cal_rad = (1.0/385.0); //385 pixels/rad
+      }
+
+      return gizmo;
+    }
+
+  bool update() override {
+    if(!schedule_100Hz.expired()) return false;
+
+    int16_t dx;
+    int16_t dy;
+    sensor->readMotionCount(&dx, &dy);
+
+    state->dx_raw = dx;
+    state->dy_raw = dy;
+
+    return true;
+  }
+};

@@ -9,49 +9,54 @@
 #include <WiFiClientSecure.h>
 #include <UniversalTelegramBot.h>
 
-// Initialize Wifi connection to the router
-char ssid[] = "XXXXXX";     // your network SSID (name)
-char password[] = "YYYYYY"; // your network key
+// Wifi network station credentials
+#define WIFI_SSID "YOUR_SSID"
+#define WIFI_PASSWORD "YOUR_PASSWORD"
+// Telegram BOT Token (Get from Botfather)
+#define BOT_TOKEN "XXXXXXXXX:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
-// Initialize Telegram BOT
-#define BOTtoken "XXXXXXXXX:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"  // your Bot Token (Get from Botfather)
+const unsigned long BOT_MTBS = 1000; // mean time between scan messages
 
-WiFiClientSecure client;
-UniversalTelegramBot bot(BOTtoken, client);
-
-int Bot_mtbs = 1000; //mean time between scan messages
-long Bot_lasttime;   //last time messages' scan has been done
+X509List cert(TELEGRAM_CERTIFICATE_ROOT);
+WiFiClientSecure secured_client;
+UniversalTelegramBot bot(BOT_TOKEN, secured_client);
+unsigned long bot_lasttime;          // last time messages' scan has been done
 bool Start = false;
 
-void handleNewMessages(int numNewMessages) {
+void handleNewMessages(int numNewMessages)
+{
   Serial.println("handleNewMessages");
   Serial.println(String(numNewMessages));
 
-  for (int i=0; i<numNewMessages; i++) {
-    String chat_id = String(bot.messages[i].chat_id);
+  for (int i = 0; i < numNewMessages; i++)
+  {
+    String chat_id = bot.messages[i].chat_id;
     String text = bot.messages[i].text;
 
     String from_name = bot.messages[i].from_name;
-    if (from_name == "") from_name = "Guest";
+    if (from_name == "")
+      from_name = "Guest";
 
-    if (text == "/send_test_action") {
-        bot.sendChatAction(chat_id, "typing");
-        delay(4000);
-        bot.sendMessage(chat_id, "Did you see the action message?");
+    if (text == "/send_test_action")
+    {
+      bot.sendChatAction(chat_id, "typing");
+      delay(4000);
+      bot.sendMessage(chat_id, "Did you see the action message?");
 
-        // You can't use own message, just choose from one of bellow
+      // You can't use own message, just choose from one of bellow
 
-        //typing for text messages
-        //upload_photo for photos
-        //record_video or upload_video for videos
-        //record_audio or upload_audio for audio files
-        //upload_document for general files
-        //find_location for location data
+      //typing for text messages
+      //upload_photo for photos
+      //record_video or upload_video for videos
+      //record_audio or upload_audio for audio files
+      //upload_document for general files
+      //find_location for location data
 
-        //more info here - https://core.telegram.org/bots/api#sendchataction
+      //more info here - https://core.telegram.org/bots/api#sendchataction
     }
 
-    if (text == "/start") {
+    if (text == "/start")
+    {
       String welcome = "Welcome to Universal Arduino Telegram Bot library, " + from_name + ".\n";
       welcome += "This is Chat Action Bot example.\n\n";
       welcome += "/send_test_action : to send test chat action message\n";
@@ -60,8 +65,8 @@ void handleNewMessages(int numNewMessages) {
   }
 }
 
-
-void setup() {
+void setup()
+{
   Serial.begin(115200);
 
   // Set WiFi to station mode and disconnect from an AP if it was Previously
@@ -71,31 +76,35 @@ void setup() {
   delay(100);
 
   // attempt to connect to Wifi network:
-  Serial.print("Connecting Wifi: ");
-  Serial.println(ssid);
-  WiFi.begin(ssid, password);
-
-  while (WiFi.status() != WL_CONNECTED) {
+  Serial.print("Connecting to Wifi SSID ");
+  Serial.print(WIFI_SSID);
+  Serial.print(" ");
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  secured_client.setTrustAnchors(&cert); // Add root certificate for api.telegram.org
+  while (WiFi.status() != WL_CONNECTED)
+  {
     Serial.print(".");
     delay(500);
   }
+  Serial.println();
 
-  Serial.println("");
-  Serial.println("WiFi connected");
-  Serial.print("IP address: ");
+  Serial.print("WiFi connected. IP address: ");
   Serial.println(WiFi.localIP());
 }
 
-void loop() {
-  if (millis() > Bot_lasttime + Bot_mtbs)  {
+void loop()
+{
+  if (millis() - bot_lasttime > BOT_MTBS)
+  {
     int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
 
-    while(numNewMessages) {
+    while (numNewMessages)
+    {
       Serial.println("got response");
       handleNewMessages(numNewMessages);
       numNewMessages = bot.getUpdates(bot.last_message_received + 1);
     }
 
-    Bot_lasttime = millis();
+    bot_lasttime = millis();
   }
 }

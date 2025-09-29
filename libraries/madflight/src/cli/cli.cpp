@@ -1,4 +1,5 @@
 #include "cli.h"
+#include "../madflight_version.h"
 
 //include all module interfaces
 #include "../ahr/ahr.h"
@@ -12,6 +13,7 @@
 #include "../led/led.h"
 #include "../bbx/bbx.h"
 #include "../mag/mag.h"
+#include "../ofl/ofl.h"
 #include "../out/out.h"
 #include "../pid/pid.h"
 #include "../rcl/rcl.h"
@@ -101,14 +103,18 @@ static void cli_spinmotors() {
 }
 
 static void cli_serial(int bus_id) {
+  MF_Serial *ser = hal_get_ser_bus(bus_id);
+  if(!ser) {
+     Serial.printf("serial - Error: serial port %d not configured.\n", bus_id);
+     return;
+  }
+
   //disable IMU interrupt
   void (*onUpdate_saved)(void) = imu.onUpdate;
   imu.onUpdate = nullptr;
-  
-  Serial.println("Dumping serial data, press enter to exit.");
 
   int cnt = 0;
-  MF_Serial *ser = hal_get_ser_bus(bus_id);
+  Serial.println("serial - Dumping serial data, press enter to exit.");
   while(Serial.available()) Serial.read(); //clear input 
   while(!Serial.available()) {
     int d = ser->read();
@@ -123,6 +129,8 @@ static void cli_serial(int bus_id) {
   }
   while(Serial.available()) Serial.read(); //clear input
 
+  Serial.println("\nserial - DONE");
+
   //enable IMU interrupt
   imu.onUpdate = onUpdate_saved;
 }
@@ -134,7 +142,7 @@ static void cli_po() {
   Serial.printf("ahr.ax:%+.2f\t", ahr.ax);
   Serial.printf("ahr.mx:%+.2f\t", ahr.mx);
   Serial.printf("ahr.roll:%+.1f\t", ahr.roll);
-  Serial.printf("PID.roll:%+.3f\t", PIDroll.PID);
+  Serial.printf("pid.roll:%+.3f\t", pid.roll);
   Serial.printf("out.%c%d%%:%1.0f\t", out.getType(0), 0, 100*out.get(0));
   Serial.printf("gps.sats:%d\t", (int)gps.sat);
   Serial.printf("imu.miss_cnt:%d\t", (int)(imu.interrupt_cnt-imu.update_cnt));
@@ -184,9 +192,9 @@ static void cli_pah() {
 }
 
 static void cli_ppid() {
-  Serial.printf("PID.roll:%+.3f\t",PIDroll.PID);
-  Serial.printf("pitch:%+.3f\t",PIDpitch.PID);
-  Serial.printf("yaw:%+.3f\t",PIDyaw.PID);
+  Serial.printf("pid.roll:%+.3f\t",pid.roll);
+  Serial.printf("pitch:%+.3f\t",pid.pitch);
+  Serial.printf("yaw:%+.3f\t",pid.yaw);
 }
 
 static void cli_pout() {
@@ -268,7 +276,16 @@ static void cli_palt() {
 }
 
 static void cli_prdr() {
-  Serial.printf("rdr.dist:%d\t", rdr.dist);
+  Serial.printf("rdr.dist:%.3f\t", rdr.dist);
+  Serial.printf("upd_cnt:%d\t", rdr.update_cnt);  
+}
+
+static void cli_pofl() {
+  Serial.printf("ofl.dx:%.3f\t", ofl.dx);
+  Serial.printf("dy:%.3f\t", ofl.dy);
+  Serial.printf("x:%.3f\t", ofl.x);
+  Serial.printf("y:%.3f\t", ofl.y);
+  Serial.printf("upd_cnt:%d\t", ofl.update_cnt);
 }
 
 struct cli_print_s {
@@ -277,7 +294,20 @@ struct cli_print_s {
   void (*function)(void);
 };
 
-#define CLI_PRINT_FLAG_COUNT 16
+#define CLI_PRINT_EXTERN_SIZE 10
+uint8_t cli_print_extern_count = 0;
+cli_print_s cli_print_extern[CLI_PRINT_EXTERN_SIZE] = {};
+bool cli_print_flag_extern[CLI_PRINT_EXTERN_SIZE] = {false};
+bool Cli::add_print_command(const char *cmd, const char *info, void (*function)(void)){
+  if(cli_print_extern_count >= CLI_PRINT_EXTERN_SIZE) return false;
+  cli_print_extern[cli_print_extern_count].cmd = cmd;
+  cli_print_extern[cli_print_extern_count].info = info;
+  cli_print_extern[cli_print_extern_count].function = function;
+  cli_print_extern_count++;
+  return true;
+};
+
+#define CLI_PRINT_FLAG_COUNT 17
 
 static const struct cli_print_s cli_print_options[CLI_PRINT_FLAG_COUNT] = {
   {"po",     "Overview", cli_po},
@@ -288,7 +318,7 @@ static const struct cli_print_s cli_print_options[CLI_PRINT_FLAG_COUNT] = {
   {"pacc",   "Filtered accelerometer (expected: -2 to 2; when level: x=0,y=0,z=1)", cli_pacc},
   {"pmag",   "Filtered magnetometer (expected: -300 to 300)", cli_pmag},
   {"pahr",   "AHRS roll, pitch, and yaw in human friendly format (expected: degrees, 0 when level)", cli_pahr},
-  {"pah",    "AHRS roll, pitch, and yaw in less verbose format (expected: degrees, 0 when level)", cli_pah},
+  {"pah",    "AHRS roll, pitch, and yaw (expected: degrees, 0 when level)", cli_pah},
   {"ppid",   "PID output (expected: -1 to 1)", cli_ppid},
   {"pout",   "Motor/servo output (expected: 0 to 1)", cli_pout},
   {"pbat",   "Battery voltage, current, Ah used and Wh used", cli_pbat},
@@ -296,6 +326,7 @@ static const struct cli_print_s cli_print_options[CLI_PRINT_FLAG_COUNT] = {
   {"palt",   "Altitude estimator", cli_palt},
   {"pgps",   "GPS", cli_pgps},
   {"prdr",   "Radar", cli_prdr},
+  {"pofl",   "Optical Flow", cli_pofl},
 };
 bool cli_print_flag[CLI_PRINT_FLAG_COUNT] = {false};
 
@@ -335,46 +366,57 @@ void Cli::begin() {
 }
 
 void Cli::help() {
+  Serial.println(MADFLIGHT_VERSION " on " HAL_ARDUINO_STR);
+
   Serial.printf(
   "-- TOOLS --\n"
-  "help or ? This info\n"
-  "ps        Task list\n"
-  "i2c       I2C scan\n"
-  "serial <bus_id>   Print serial data\n"
-  "spinmotors\n"
-  "reboot    Reboot flight controller\n"
+  "help or ?           This info\n"
+  "ps                  Task list\n"
+  "i2c                 I2C scan\n"
+  "serial <bus_id>     Dump serial data\n"
+  "spinmotors          Spin each motor\n"
+  "reboot              Reboot flight controller\n"
   "-- PRINT --\n"
-  "poff      Printing off\n"
-  "pall      Print all\n"
+  "poff                Printing off\n"
+  "pall                Print all\n"
   );
   for(int i=0;i<CLI_PRINT_FLAG_COUNT;i++) {
     Serial.print(cli_print_options[i].cmd);
-    for(int j = strlen(cli_print_options[i].cmd); j < 9; j++) {
+    for(int j = strlen(cli_print_options[i].cmd); j < 19; j++) {
       Serial.print(' ');
     }
     Serial.print(' ');
     Serial.print(cli_print_options[i].info);
     Serial.println();
   }
+  for(int i=0;i<cli_print_extern_count;i++) {
+    Serial.print(cli_print_extern[i].cmd);
+    for(int j = strlen(cli_print_extern[i].cmd); j < 19; j++) {
+      Serial.print(' ');
+    }
+    Serial.print(' ');
+    Serial.print(cli_print_extern[i].info);
+    Serial.println();
+  }  
   Serial.printf(
   "-- BLACK BOX --\n"
-  "bbstart   Start logging\n"
-  "bbstop    Stop logging\n"
-  "bbls      List files\n"
-  "bberase   Erase bb device\n"
-  "bbbench   Benchmark\n"
-  "bbinfo    Info\n"
+  "bbstart             Start logging\n"
+  "bbstop              Stop logging\n"
+  "bbls                List files\n"
+  "bberase             Erase bb device\n"
+  "bbbench             Benchmark\n"
+  "bbinfo              Info\n"
   "-- CONFIG --\n"
   "set <name> <value>  Set config parameter\n"
   "dump <filter>       List config\n"
-  "diff <filter>       List config changes from default d\n"
+  "diff <filter>       List config changes from default\n"
   "save                Save config and reboot\n"
   "defaults            Reset to defaults and reboot\n"
   "-- CALIBRATE --\n"
-  "calinfo   Sensor info\n"
-  "calimu    Calibrate IMU error\n"
-  "calmag    Calibrate magnetometer\n"
-  "calradio  Calibrate RC Radio\n"
+  "calinfo             Sensor info\n"
+  "calimu              Calibrate IMU error\n"
+  "calmag              Calibrate magnetometer\n"
+  "calradio            Calibrate RC Radio\n"
   );
 }
 
@@ -410,6 +452,10 @@ bool Cli::cmd_process_char(char c) {
   }else if ( (c=='\r' || c=='\n') ) {
     processCmd();
     rv = true;
+  }else if (c == 0x08) { //backspace
+    if(cmdline.length() > 0) {
+      cmdline = cmdline.substring(0, cmdline.length() - 1);
+    }
   }else{
     cmdline += c;
   }
@@ -446,6 +492,14 @@ void Cli::processCmd() {
 
 
 void Cli::executeCmd(String cmd, String arg1, String arg2) {
+  //process external print commands
+  for (int i=0;i<cli_print_extern_count;i++) {
+    if (strcmp(cmd.c_str(), cli_print_extern[i].cmd) == 0) {
+      cli_print_flag_extern[i] = !cli_print_flag_extern[i];
+      return;
+    }
+  }
+
   //process print commands
   for (int i=0;i<CLI_PRINT_FLAG_COUNT;i++) {
     if (strcmp(cmd.c_str(), cli_print_options[i].cmd) == 0) {
@@ -570,7 +624,13 @@ void Cli::calibrate_IMU2(bool gyro_only) {
   float gxerr = 0;
   float gyerr = 0;
   float gzerr = 0;
+  int bar_cnt = 0;
+  float bar_alt = 0;
   for(int i=0; i<cnt; i++) {
+    if(bar.update()) {
+      bar_cnt++;
+      bar_alt += bar.alt;
+    }
     imu.waitNewSample();
     axerr += imu.ax;
     ayerr += imu.ay;
@@ -589,6 +649,11 @@ void Cli::calibrate_IMU2(bool gyro_only) {
   //remove gravitation
   azerr -= 1.0;
 
+  //save ground level
+  if(bar_cnt > 0) {
+    bar.ground_level = bar_alt / bar_cnt;
+    Serial.printf("BAR: Ground level: %f m (%d samples)\n", bar.ground_level, bar_cnt);
+  }
 
   Serial.printf("set imu_cal_gx %+f #config was %+f\n", gxerr, cfg.imu_cal_gx);
   Serial.printf("set imu_cal_gy %+f #config was %+f\n", gyerr, cfg.imu_cal_gy);
@@ -824,6 +889,7 @@ void Cli::calibrate_info(int seconds) {
 //========================================================================================================================//
 
 void Cli::cli_print_all(bool val) {
+  for(int i=0;i<cli_print_extern_count;i++) cli_print_flag_extern[i] = val;
   for(int i=0;i<CLI_PRINT_FLAG_COUNT;i++) cli_print_flag[i] = val;
 }
 
@@ -833,6 +899,12 @@ void Cli::cli_print_loop() {
     cli_print_time = micros();
     bool cli_print_need_newline = false;
     //Serial.printf("loop_time:%d\t",loop_time); //print loop time stamp
+    for(int i=0;i<cli_print_extern_count;i++) {
+      if(cli_print_flag_extern[i]) {
+        cli_print_extern[i].function();
+        cli_print_need_newline = true;
+      }
+    }
     for (int i=0;i<CLI_PRINT_FLAG_COUNT;i++) {
       if (cli_print_flag[i]) {
         cli_print_options[i].function();

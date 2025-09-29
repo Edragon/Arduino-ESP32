@@ -10,9 +10,22 @@ MAG: QMC6309
 BBX: SDCARD (1-bit SPI or 4-bit SDIO)
 
 */
+#include <Arduino.h> //needed for ARDUINO_PICO_MAJOR etc
+
+#if !ARDUINO_ARCH_RP2040
+  #error "Invalid Arduino Architecture: Select Arduino Pico"
+#endif
+
+#if (ARDUINO_PICO_MAJOR * 10000 + ARDUINO_PICO_MINOR * 100 + ARDUINO_PICO_REVISION) < 50100
+  #error "Invalid Arduino Framework version: Install Arduino Pico version 5.1.0 or later"
+#endif
+
+#if !PICO_RP2350 || PICO_RP2350A
+  #error "Invalid board: Select board Solder Party Stamp XL RP2350B"
+#endif
 
 #define MF_BOARD_NAME "madflight FC1"
-#define MF_MCU_NAME "RP2350B"
+#define MF_MCU_NAME "RP2350B (48 GPIO)"
 
 const char madflight_board[] = R""(
 

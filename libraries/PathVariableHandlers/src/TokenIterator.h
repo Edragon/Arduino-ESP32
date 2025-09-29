@@ -5,7 +5,8 @@
 
 class TokenIterator {
 public:
-  TokenIterator(char* data, size_t length, char sep = ',');
+  TokenIterator(const char* data, size_t length, char sep = '/');
+  ~TokenIterator();
 
   bool hasNext();
   const char* nextToken();
@@ -15,7 +16,6 @@ private:
   char* data;
   char* current;
   size_t length;
-  char sep;
   size_t i;
 };
 

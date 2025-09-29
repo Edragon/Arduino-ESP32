@@ -32,11 +32,11 @@ Arming/disarming with sticks (when no arm switch is defined, i.e. cfg.rcl_arm_ch
 LED State                              Meaning
 ---------                              -------
 OFF                                    Not powered
-ON                                     Startup (don't move, running gyro calibration)
-Blinking long OFF short ON             DISARMED
-Blinking long ON short OFF             ARMED
+ON (blue)                              Startup (don't move, running gyro calibration)
+Blinking long OFF short ON (green)     DISARMED
+Blinking long ON short OFF (red)       ARMED
 Blink interval longer than 1 second    imu_loop() is taking too much time
-fast blinking                          Something is wrong, connect USB serial for info
+Fast blinking                          Something is wrong, connect USB serial for info
 
 MIT license
 Copyright (c) 2023-2025 https://madflight.com
@@ -182,12 +182,12 @@ void control_Angle(bool zero_integrators) {
    * excessive buildup. This can be seen by holding the vehicle at an angle and seeing the motors ramp up on one side until
    * they've maxed out throttle... saturating I to a specified limit fixes this. The second feature defaults the I terms to 0
    * if the throttle is at the minimum setting. This means the motors will not start spooling up on the ground, and the I 
-   * terms will always start from 0 on takeoff. This function updates the variables PIDroll.PID, PIDpitch.PID, and PIDyaw.PID which
+   * terms will always start from 0 on takeoff. This function updates the variables pid.roll, pid.pitch, and pid.yaw which
    * can be thought of as 1-D stablized signals. They are mixed to the configuration of the vehicle in out_Mixer().
    */ 
 
   //inputs: roll_des, pitch_des, yawRate_des
-  //outputs: PIDroll.PID, PIDpitch.PID, PIDyaw.PID
+  //outputs: pid.roll, pid.pitch, pid.yaw
 
   //desired values
   float roll_des = rcl.roll * maxRoll; //Between -maxRoll and +maxRoll
@@ -209,14 +209,14 @@ void control_Angle(bool zero_integrators) {
   integral_roll += error_roll * imu.dt;
   integral_roll = constrain(integral_roll, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
   float derivative_roll = ahr.gx;
-  PIDroll.PID = 0.01 * (Kp_ro_pi_angle*error_roll + Ki_ro_pi_angle*integral_roll - Kd_ro_pi_angle*derivative_roll); //Scaled by .01 to bring within -1 to 1 range
+  pid.roll = 0.01 * (Kp_ro_pi_angle*error_roll + Ki_ro_pi_angle*integral_roll - Kd_ro_pi_angle*derivative_roll); //Scaled by .01 to bring within -1 to 1 range
 
   //Pitch PID
   float error_pitch = pitch_des - ahr.pitch;
   integral_pitch += error_pitch * imu.dt;
   integral_pitch = constrain(integral_pitch, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
   float derivative_pitch = ahr.gy; 
-  PIDpitch.PID = 0.01 * (Kp_ro_pi_angle*error_pitch + Ki_ro_pi_angle*integral_pitch - Kd_ro_pi_angle*derivative_pitch); //Scaled by .01 to bring within -1 to 1 range
+  pid.pitch = 0.01 * (Kp_ro_pi_angle*error_pitch + Ki_ro_pi_angle*integral_pitch - Kd_ro_pi_angle*derivative_pitch); //Scaled by .01 to bring within -1 to 1 range
 
   //Yaw PID
   if(-0.02 < rcl.yaw && rcl.yaw < 0.02) {
@@ -227,7 +227,7 @@ void control_Angle(bool zero_integrators) {
     float error_yaw = degreeModulus(yaw_desired - ahr.yaw);
     float desired_yawRate = error_yaw / 0.5; //set desired yawRate such that it gets us to desired yaw in 0.5 second
     float derivative_yaw = desired_yawRate - ahr.gz;
-    PIDyaw.PID = 0.01 * (Kp_yaw_angle*error_yaw + Kd_yaw_angle*derivative_yaw); //Scaled by .01 to bring within -1 to 1 range
+    pid.yaw = 0.01 * (Kp_yaw_angle*error_yaw + Kd_yaw_angle*derivative_yaw); //Scaled by .01 to bring within -1 to 1 range
 
     //update yaw rate controller
     error_yawRate_prev = 0;
@@ -237,7 +237,7 @@ void control_Angle(bool zero_integrators) {
     integral_yawRate += error_yawRate * imu.dt;
     integral_yawRate = constrain(integral_yawRate, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
     float derivative_yawRate = (error_yawRate - error_yawRate_prev) / imu.dt; 
-    PIDyaw.PID = 0.01 * (Kp_yaw_rate*error_yawRate + Ki_yaw_rate*integral_yawRate + Kd_yaw_rate*derivative_yawRate); //Scaled by .01 to bring within -1 to 1 range
+    pid.yaw = 0.01 * (Kp_yaw_rate*error_yawRate + Ki_yaw_rate*integral_yawRate + Kd_yaw_rate*derivative_yawRate); //Scaled by .01 to bring within -1 to 1 range
 
     //Update derivative variables
     error_yawRate_prev = error_yawRate;
@@ -252,7 +252,7 @@ void control_Rate(bool zero_integrators) {
   //See explanation for control_Angle(). Everything is the same here except the error is now: desired rate - raw gyro reading.
 
   //inputs: roll_des, pitch_des, yawRate_des
-  //outputs: PIDroll.PID, PIDpitch.PID, PIDyaw.PID
+  //outputs: pid.roll, pid.pitch, pid.yaw
 
   //desired values
   float rollRate_des = rcl.roll * maxRollRate; //Between -maxRoll and +maxRoll
@@ -276,21 +276,21 @@ void control_Rate(bool zero_integrators) {
   integral_roll += error_roll * imu.dt;
   integral_roll = constrain(integral_roll, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
   float derivative_roll = (error_roll - error_roll_prev) / imu.dt;
-  PIDroll.PID = 0.01 * (Kp_ro_pi_rate*error_roll + Ki_ro_pi_rate*integral_roll + Kd_ro_pi_rate*derivative_roll); //Scaled by .01 to bring within -1 to 1 range
+  pid.roll = 0.01 * (Kp_ro_pi_rate*error_roll + Ki_ro_pi_rate*integral_roll + Kd_ro_pi_rate*derivative_roll); //Scaled by .01 to bring within -1 to 1 range
 
   //Pitch
   float error_pitch = pitchRate_des - ahr.gy;
   integral_pitch += error_pitch * imu.dt;
   integral_pitch = constrain(integral_pitch, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
   float derivative_pitch = (error_pitch - error_pitch_prev) / imu.dt;   
-  PIDpitch.PID = 0.01 * (Kp_ro_pi_rate*error_pitch + Ki_ro_pi_rate*integral_pitch + Kd_ro_pi_rate*derivative_pitch); //Scaled by .01 to bring within -1 to 1 range
+  pid.pitch = 0.01 * (Kp_ro_pi_rate*error_pitch + Ki_ro_pi_rate*integral_pitch + Kd_ro_pi_rate*derivative_pitch); //Scaled by .01 to bring within -1 to 1 range
 
   //Yaw, stablize on rate from GyroZ
   float error_yaw = yawRate_des - ahr.gz;
   integral_yaw += error_yaw * imu.dt;
   integral_yaw = constrain(integral_yaw, -i_limit, i_limit); //Saturate integrator to prevent unsafe buildup
   float derivative_yaw = (error_yaw - error_yaw_prev) / imu.dt; 
-  PIDyaw.PID = 0.01 * (Kp_yaw_rate*error_yaw + Ki_yaw_rate*integral_yaw + Kd_yaw_rate*derivative_yaw); //Scaled by .01 to bring within -1 to 1 range
+  pid.yaw = 0.01 * (Kp_yaw_rate*error_yaw + Ki_yaw_rate*integral_yaw + Kd_yaw_rate*derivative_yaw); //Scaled by .01 to bring within -1 to 1 range
 
   //Update derivative variables
   error_roll_prev = error_roll;
@@ -319,15 +319,15 @@ void out_KillSwitchAndFailsafe() {
 void out_Mixer() {
   //DESCRIPTION: Mixes scaled commands from PID controller to actuator outputs based on vehicle configuration
   /*
-   * Takes PIDroll.PID, PIDpitch.PID, and PIDyaw.PID computed from the PID controller and appropriately mixes them for the desired
-   * vehicle configuration. For example on a quadcopter, the left two motors should have +PIDroll.PID while the right two motors
-   * should have -PIDroll.PID. Front two should have +PIDpitch.PID and the back two should have -PIDpitch.PID etc... every motor has
+   * Takes pid.roll, pid.pitch, and pid.yaw computed from the PID controller and appropriately mixes them for the desired
+   * vehicle configuration. For example on a quadcopter, the left two motors should have +pid.roll while the right two motors
+   * should have -pid.roll. Front two should have +pid.pitch and the back two should have -pid.pitch etc... every motor has
    * normalized (0 to 1) rcl.throttle command for throttle control. Can also apply direct unstabilized commands from the transmitter with 
    * rcl.xxx variables are to be sent to the motor ESCs and servos.
    * 
    *Relevant variables:
    *rcl.throtle - direct thottle control
-   *PIDroll.PID, PIDpitch.PID, PIDyaw.PID - stabilized axis variables
+   *pid.roll, pid.pitch, pid.yaw - stabilized axis variables
    *rcl.roll, rcl.pitch, rcl.yaw - direct unstabilized command passthrough
    */
 /*
@@ -360,9 +360,9 @@ Yaw right               (CCW+ CW-)       -++-
     out.set(3, thr);
   }else{
     // Quad mixing
-    out.set(0, thr - PIDpitch.PID - PIDroll.PID - PIDyaw.PID); //M1 Back Right CW
-    out.set(1, thr + PIDpitch.PID - PIDroll.PID + PIDyaw.PID); //M2 Front Right CCW
-    out.set(2, thr - PIDpitch.PID + PIDroll.PID + PIDyaw.PID); //M3 Back Left CCW
-    out.set(3, thr + PIDpitch.PID + PIDroll.PID - PIDyaw.PID); //M4 Front Left CW
+    out.set(0, thr - pid.pitch - pid.roll - pid.yaw); //M1 Back Right CW
+    out.set(1, thr + pid.pitch - pid.roll + pid.yaw); //M2 Front Right CCW
+    out.set(2, thr - pid.pitch + pid.roll + pid.yaw); //M3 Back Left CCW
+    out.set(3, thr + pid.pitch + pid.roll - pid.yaw); //M4 Front Left CW
   }
 }
