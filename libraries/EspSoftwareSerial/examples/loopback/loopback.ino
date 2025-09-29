@@ -1,33 +1,35 @@
 #include <SoftwareSerial.h>
 
 // On ESP8266:
-// Local SoftwareSerial loopback, connect D5 (rx) and D6 (tx).
+// Local EspSoftwareSerial loopback, connect D5 (rx) and D6 (tx).
 // For local hardware loopback, connect D5 to D8 (tx), D6 to D7 (rx).
 // For hardware send/sink, connect D7 (rx) and D8 (tx).
 // Hint: The logger is run at 9600bps such that enableIntTx(true) can remain unchanged. Blocking
-// interrupts severely impacts the ability of the SoftwareSerial devices to operate concurrently
+// interrupts severely impacts the ability of the EspSoftwareSerial devices to operate concurrently
 // and/or in duplex mode.
 // Operating in software serial full duplex mode, runs at 19200bps and few errors (~2.5%).
 // Operating in software serial half duplex mode (both loopback and repeater),
 // runs at 57600bps with nearly no errors.
 // Operating loopback in full duplex, and repeater in half duplex, runs at 38400bps with nearly no errors.
 // On ESP32:
-// For SoftwareSerial or hardware send/sink, connect D5 (rx) and D6 (tx).
+// For EspSoftwareSerial or hardware send/sink, connect D5 (rx) and D6 (tx).
 // Hardware Serial2 defaults to D4 (rx), D3 (tx).
 // For local hardware loopback, connect D5 (rx) to D3 (tx), D6 (tx) to D4 (rx).
 
 #ifndef D5
 #if defined(ESP8266)
-#define D5 (14)
-#define D6 (12)
-#define D7 (13)
 #define D8 (15)
+#define D5 (14)
+#define D7 (13)
+#define D6 (12)
+#define RX (3)
 #define TX (1)
 #elif defined(ESP32)
-#define D5 (18)
-#define D6 (19)
-#define D7 (23)
 #define D8 (5)
+#define D5 (18)
+#define D7 (23)
+#define D6 (19)
+#define RX (3)
 #define TX (1)
 #endif
 #endif
@@ -45,11 +47,11 @@ constexpr int IUTBITRATE = 19200;
 #endif
 
 #if defined(ESP8266)
-constexpr SoftwareSerialConfig swSerialConfig = SWSERIAL_8E1;
-constexpr SerialConfig hwSerialConfig = SERIAL_8E1;
+constexpr EspSoftwareSerial::Config swSerialConfig = EspSoftwareSerial::SWSERIAL_8E1;
+constexpr SerialConfig hwSerialConfig = ::SERIAL_8E1;
 #elif defined(ESP32)
-constexpr SoftwareSerialConfig swSerialConfig = SWSERIAL_8E1;
-constexpr uint32_t hwSerialConfig = SERIAL_8E1;
+constexpr EspSoftwareSerial::Config swSerialConfig = EspSoftwareSerial::SWSERIAL_8E1;
+constexpr uint32_t hwSerialConfig = ::SERIAL_8E1;
 #else
 constexpr unsigned swSerialConfig = 3;
 #endif
@@ -58,8 +60,8 @@ constexpr bool invert = false;
 constexpr int BLOCKSIZE = 16; // use fractions of 256
 
 unsigned long start;
-String effTxTxt("eff. tx: ");
-String effRxTxt("eff. rx: ");
+const char effTxTxt[] PROGMEM = "eff. tx: ";
+const char effRxTxt[] PROGMEM = "eff. rx: ";
 int txCount;
 int rxCount;
 int expected;
@@ -70,37 +72,37 @@ constexpr int ReportInterval = IUTBITRATE / 8;
 #if defined(ESP8266)
 #if defined(HWLOOPBACK) || defined(HWSOURCESWSINK)
 HardwareSerial& hwSerial(Serial);
-SoftwareSerial serialIUT;
-SoftwareSerial logger;
+EspSoftwareSerial::UART serialIUT;
+EspSoftwareSerial::UART logger;
 #elif defined(HWSOURCESINK)
 HardwareSerial& serialIUT(Serial);
-SoftwareSerial logger;
+EspSoftwareSerial::UART logger;
 #else
-SoftwareSerial serialIUT;
+EspSoftwareSerial::UART serialIUT;
 HardwareSerial& logger(Serial);
 #endif
 #elif defined(ESP32)
 #if defined(HWLOOPBACK) || defined (HWSOURCESWSINK)
 HardwareSerial& hwSerial(Serial2);
-SoftwareSerial serialIUT;
+EspSoftwareSerial::UART serialIUT;
 #elif defined(HWSOURCESINK)
 HardwareSerial& serialIUT(Serial2);
 #else
-SoftwareSerial serialIUT;
+EspSoftwareSerial::UART serialIUT;
 #endif
 HardwareSerial& logger(Serial);
 #else
-SoftwareSerial serialIUT(14, 12);
+EspSoftwareSerial::UART serialIUT(14, 12);
 HardwareSerial& logger(Serial);
 #endif
 
 void setup() {
 #if defined(ESP8266)
 #if defined(HWLOOPBACK) || defined(HWSOURCESINK) || defined(HWSOURCESWSINK)
-    Serial.begin(IUTBITRATE, hwSerialConfig, SERIAL_FULL, 1, invert);
+    Serial.begin(IUTBITRATE, hwSerialConfig, ::SERIAL_FULL, 1, invert);
     Serial.swap();
     Serial.setRxBufferSize(2 * BLOCKSIZE);
-    logger.begin(9600, SWSERIAL_8N1, -1, TX);
+    logger.begin(9600, EspSoftwareSerial::SWSERIAL_8N1, -1, TX);
 #else
     logger.begin(9600);
 #endif
@@ -132,7 +134,7 @@ void setup() {
     logger.begin(9600);
 #endif
 
-    logger.println("Loopback example for EspSoftwareSerial");
+    logger.println(PSTR("Loopback example for EspEspSoftwareSerial"));
 
     start = micros();
     txCount = 0;
@@ -179,10 +181,10 @@ void loop() {
 #endif
 #ifdef HWSOURCESINK
 #if defined(ESP8266)
-    if (serialIUT.hasOverrun()) { logger.println("serialIUT.overrun"); }
+    if (serialIUT.hasOverrun()) { logger.println(PSTR("serialIUT.overrun")); }
 #endif
 #else
-    if (serialIUT.overflow()) { logger.println("serialIUT.overflow"); }
+    if (serialIUT.overflow()) { logger.println(PSTR("serialIUT.overflow")); }
 #endif
 
     int inCnt;
@@ -250,15 +252,15 @@ void loop() {
     const uint32_t interval = micros() - start;
     if (txCount >= ReportInterval && interval) {
         uint8_t wordBits = (5 + swSerialConfig % 4) + static_cast<bool>(swSerialConfig & 070) + 1 + ((swSerialConfig & 0300) ? 1 : 0);
-        logger.println(String("tx/rx: ") + txCount + "/" + rxCount);
+        logger.println(String(PSTR("tx/rx: ")) + txCount + PSTR("/") + rxCount);
         const long txCps = txCount * (1000000.0 / interval);
         const long rxCps = rxCount * (1000000.0 / interval);
-        logger.print(effTxTxt + wordBits * txCps + "bps, "
-            + effRxTxt + wordBits * rxCps + "bps, "
-            + rxErrors + " errors (" + 100.0 * rxErrors / (!rxErrors ? 1 : rxCount) + "%)");
+        logger.print(String(FPSTR(effTxTxt)) + wordBits * txCps + PSTR("bps, ")
+            + effRxTxt + wordBits * rxCps + PSTR("bps, ")
+            + rxErrors + PSTR(" errors (") + 100.0 * rxErrors / (!rxErrors ? 1 : rxCount) + PSTR("%)"));
         if (0 != (swSerialConfig & 070))
         {
-            logger.print(" ("); logger.print(rxParityErrors); logger.println(" parity errors)");
+            logger.print(PSTR(" (")); logger.print(rxParityErrors); logger.println(PSTR(" parity errors)"));
         }
         else
         {

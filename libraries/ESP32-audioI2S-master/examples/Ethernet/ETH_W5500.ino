@@ -1,7 +1,6 @@
 #include "Arduino.h" // >= Arduino V3
 #include <ETH.h>
 #include <SPI.h>
-#define ETHERNET_IF
 #include "Audio.h"
 
 Audio audio;
@@ -49,7 +48,12 @@ void onEvent(arduino_event_id_t event, arduino_event_info_t info) {
     }
 }
 
-void setup(){
+void my_audio_info(Audio::msg_t m) {
+    Serial.printf("%s: %s\n", m.s, m.msg);
+}
+
+void setup() {
+    Audio::audio_info_callback = my_audio_info;
     Serial.begin(115200);
     Serial.print("\n\n");
 
@@ -67,8 +71,4 @@ void setup(){
 void loop(){
     audio.loop();
     vTaskDelay(5 /portTICK_PERIOD_MS);
-}
-
-void audio_info(const char *info){
-    Serial.print("info        "); Serial.println(info);
 }

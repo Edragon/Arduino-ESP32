@@ -20,69 +20,40 @@ Audio audio = Audio(true);
 String ssid =     "xxxxxxxx";
 String password = "xxxxxxxx";
 
+void my_audio_info(Audio::msg_t m) {
+    Serial.printf("%s: %s\n", m.s, m.msg);
+}
 
 void setup() {
-  M5.begin(false);  //Lcd disabled to reduce noise
-  M5.Axp.ScreenBreath(1); //Lower Lcd backlight
-  pinMode(36, INPUT);
-  gpio_pulldown_dis(GPIO_NUM_25);
-  gpio_pullup_dis(GPIO_NUM_25);
-  M5.Beep.tone(44100);  //Built-in buzzer tone
-  M5.Beep.end();        //disabled
-  
-  audio.setVolume(15); // 0...21
-  
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid.c_str(), password.c_str());
-  while (!WiFi.isConnected()) {
-    delay(10);
-  }
-  ESP_LOGI(TAG, "Connected");
-  ESP_LOGI(TAG, "Starting MP3...\n");
+    Audio::audio_info_callback = my_audio_info;
+    M5.begin(false);        // Lcd disabled to reduce noise
+    M5.Axp.ScreenBreath(1); // Lower Lcd backlight
+    pinMode(36, INPUT);
+    gpio_pulldown_dis(GPIO_NUM_25);
+    gpio_pullup_dis(GPIO_NUM_25);
+    M5.Beep.tone(44100); // Built-in buzzer tone
+    M5.Beep.end();       // disabled
 
-  audio.connecttohost("http://air.ofr.fm:8008/jazz/mp3/128");
-//  audio.connecttospeech("Миска вареників з картоплею та шкварками, змащених салом!", "uk-UA");
+    audio.setVolume(15); // 0...21
+
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(ssid.c_str(), password.c_str());
+    while (!WiFi.isConnected()) { delay(10); }
+    ESP_LOGI(TAG, "Connected");
+    ESP_LOGI(TAG, "Starting MP3...\n");
+
+    audio.connecttohost("http://air.ofr.fm:8008/jazz/mp3/128");
+    //  audio.connecttospeech("Миска вареників з картоплею та шкварками, змащених салом!", "uk-UA");
 }
 
 void loop() {
+    vTaskDelay(1);
     audio.loop();
     if(Serial.available()){ // put streamURL in serial monitor
         audio.stopSong();
-        String r=Serial.readString(); 
+        String r=Serial.readString();
         r.trim();
         if(r.length()>5) audio.connecttohost(r.c_str());
         log_i("free heap=%i", ESP.getFreeHeap());
     }
-}
-
-// optional
-void audio_info(const char *info){
-    Serial.print("info        "); Serial.println(info);
-}
-void audio_id3data(const char *info){  //id3 metadata
-    Serial.print("id3data     ");Serial.println(info);
-}
-void audio_eof_mp3(const char *info){  //end of file
-    Serial.print("eof_mp3     ");Serial.println(info);
-}
-void audio_showstation(const char *info){
-    Serial.print("station     ");Serial.println(info);
-}
-void audio_showstreamtitle(const char *info){
-    Serial.print("streamtitle ");Serial.println(info);
-}
-void audio_bitrate(const char *info){
-    Serial.print("bitrate     ");Serial.println(info);
-}
-void audio_commercial(const char *info){  //duration in sec
-    Serial.print("commercial  ");Serial.println(info);
-}
-void audio_icyurl(const char *info){  //homepage
-    Serial.print("icyurl      ");Serial.println(info);
-}
-void audio_lasthost(const char *info){  //stream URL played
-    Serial.print("lasthost    ");Serial.println(info);
-}
-void audio_eof_speech(const char *info){
-    Serial.print("eof_speech  ");Serial.println(info);
 }

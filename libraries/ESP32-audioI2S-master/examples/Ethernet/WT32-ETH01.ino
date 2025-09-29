@@ -13,11 +13,17 @@
 #define I2S_BCLK      14
 #define I2S_LRC       15
 
-#define ETHERNET_IF
 #define ETH_PHY_TYPE  ETH_PHY_LAN8720
 #define ETH_PHY_MDC   23
 #define ETH_PHY_MDIO  18
+
+#ifdef CONFIG_IDF_TARGET_ESP32
 #define ETH_CLK_MODE  ETH_CLOCK_GPIO0_IN
+#endif
+
+#ifdef CONFIG_IDF_TARGET_ESP32P4
+#define ETH_CLK_MODE  EMAC_CLK_EXT_IN
+#endif
 
 #include "ETH.h"
 
@@ -55,27 +61,28 @@ void onEvent(arduino_event_id_t event) {
   }
 }
 
+void my_audio_info(Audio::msg_t m) {
+    Serial.printf("%s: %s\n", m.s, m.msg);
+}
+
 void setup() {
+    Audio::audio_info_callback = my_audio_info;
     pinMode(SD_CS, OUTPUT);      digitalWrite(SD_CS, HIGH);
     SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);
     Serial.begin(115200);
     SD.begin(SD_CS);
-	
+
     Network.onEvent(onEvent);
     ETH.begin();
     while (!eth_connected) delay(100);
-    // Eth Connected, 	
-	
+    // Eth Connected,
+
     audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
     audio.setVolume(21); // default 0...21
     audio.connecttohost("https://wdr-wdr2-ruhrgebiet.icecastssl.wdr.de/wdr/wdr2/ruhrgebiet/mp3/128/stream.mp3"); // mp3
 }
 
-void loop()
-{
+void loop(){
+    vTaskDelay(1);
     audio.loop();
-}
-
-void audio_info(const char *info){
-    Serial.print("info        "); Serial.println(info);
 }

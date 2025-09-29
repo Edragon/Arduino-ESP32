@@ -7214,8 +7214,8 @@ uint8_t reconstruct_single_channel(NeAACDecStruct* hDecoder, ic_stream* ics, ele
             sizeof(uint8_t) * (MAX_SYNTAX_ELEMENTS - hDecoder->fr_ch_ele));
 
         hDecoder->element_output_channels[hDecoder->fr_ch_ele] = output_channels;
-        //retval = 21;
-        //goto exit;
+        retval = 21;
+        goto exit;
     }
     if (hDecoder->element_alloced[hDecoder->fr_ch_ele] == 0) {
         retval = allocate_single_channel(hDecoder, sce->channel, output_channels);
@@ -10822,7 +10822,7 @@ void ps_decorrelate(ps_info* ps, qmf_t X_left[38][64], qmf_t X_right[38][64], qm
     (void)temp_delay;
     uint8_t          sb, maxsb;
     const complex_t* Phi_Fract_SubQmf;
-    uint8_t          temp_delay_ser[NO_ALLPASS_LINKS];
+    uint8_t          temp_delay_ser[NO_ALLPASS_LINKS] = {0};
     real_t           P_SmoothPeakDecayDiffNrg, nrg;
     // real_t           P[32][34];
     real_t (*P)[34] = (real_t (*)[34])faad_malloc(32 * sizeof(real_t[34]));

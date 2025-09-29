@@ -281,12 +281,12 @@ namespace delegate
                 return iterator();
             }
 
-            const Delegate* IRAM_ATTR add(const Delegate& del)
+            const Delegate* add(const Delegate& del)
             {
                 return add(Delegate(del));
             }
 
-            const Delegate* IRAM_ATTR add(Delegate&& del)
+            const Delegate* add(Delegate&& del)
             {
                 if (!del)
                     return nullptr;
