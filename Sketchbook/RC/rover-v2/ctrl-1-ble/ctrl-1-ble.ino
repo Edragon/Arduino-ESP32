@@ -40,7 +40,7 @@
 
 // Battery sense (adjust to your wiring)
 #define BATTERY_ADC_PIN 36
-#define BATTERY_DIVIDER_RATIO 2.00f  // Vbatt = Vadc * ratio (e.g., 2.0 for 1:1, ~11.0 for 100k/10k)
+#define BATTERY_DIVIDER_RATIO 4.25f  // Vbatt = Vadc * ratio (390kΩ/120kΩ divider: (390+120)/120 = 4.25)
 
 // Soft start variables
 int pwmLeftIn1 = 0, pwmLeftIn2 = 0, pwmRightIn1 = 0, pwmRightIn2 = 0;
@@ -287,6 +287,14 @@ void taskBLE(void* pv)
       snapshot.throttle = 0;
       snapshot.steering = 0;
     }
+
+    // Debug output
+    Serial.print("[BLE] Battery: ");
+    Serial.print(snapshot.battery_mv);
+    Serial.print(" mV | Throttle: ");
+    Serial.print(snapshot.throttle);
+    Serial.print(" | Steering: ");
+    Serial.println(snapshot.steering);
 
     // Update BLE characteristics if server is created
     if (pBatteryCharacteristic && pThrottleCharacteristic && pSteeringCharacteristic) {
