@@ -25,21 +25,44 @@ void setup() {
 }
 
 void loop() {
+  Serial.println("=== Starting Servo Sequence ===");
+  
   Serial.println("Move to 0°");
+  Serial.print("  Servo1: 0° (Pin ");
+  Serial.print(SERVO1_PIN);
+  Serial.print("), Servo2: 180° (Pin ");
+  Serial.print(SERVO2_PIN);
+  Serial.println(")");
   for (int i = 0; i < 50; i++) {
     servoPulse(SERVO1_PIN, 0);
     servoPulse(SERVO2_PIN, 180);
   }
+  Serial.println("  Position reached");
 
   Serial.println("Move to 180°");
+  Serial.print("  Servo1: 180° (Pin ");
+  Serial.print(SERVO1_PIN);
+  Serial.print("), Servo2: 0° (Pin ");
+  Serial.print(SERVO2_PIN);
+  Serial.println(")");
   for (int i = 0; i < 50; i++) {
     servoPulse(SERVO1_PIN, 180);
     servoPulse(SERVO2_PIN, 0);
   }
+  Serial.println("  Position reached");
 
   Serial.println("Center (90°)");
+  Serial.print("  Servo1: 90° (Pin ");
+  Serial.print(SERVO1_PIN);
+  Serial.print("), Servo2: 90° (Pin ");
+  Serial.print(SERVO2_PIN);
+  Serial.println(")");
   for (int i = 0; i < 50; i++) {
     servoPulse(SERVO1_PIN, 90);
     servoPulse(SERVO2_PIN, 90);
   }
+  Serial.println("  Position reached");
+  
+  Serial.println("=== Sequence Complete ===\n");
+  delay(1000);
 }

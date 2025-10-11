@@ -1,7 +1,7 @@
 #define SERVO_PIN1 13
 #define SERVO_PIN2 14
 #define PERIOD_US 20000
-#define STEP_US 1 // change per period (1 µs per 20 ms => ~40 s for full travel)
+#define STEP_US 20 // change per period (1 µs per 20 ms => ~40 s for full travel)
 
 void setup() {
   pinMode(SERVO_PIN1, OUTPUT);

@@ -1,7 +1,6 @@
 #include <AlfredoCRSF.h>
 #include <HardwareSerial.h>
 #include <Adafruit_NeoPixel.h>
-#include <ESP32Servo.h>
 #include <stdint.h>
 #ifdef ARDUINO_ARCH_ESP32
 #include "freertos/FreeRTOS.h"
@@ -39,14 +38,6 @@
 #define WS2812_PIN 48
 #define WS2812_NUM_LEDS 1
 
-// Servo pins
-#define SERVO1_PIN 13
-#define SERVO2_PIN 14
-
-// Invert servo rotation (1 = invert, 0 = normal)
-#define SERVO1_INVERT 0
-#define SERVO2_INVERT 1
-
 // Battery sense (adjust to your wiring)
 #define BATTERY_ADC_PIN 36
 #define BATTERY_DIVIDER_RATIO 4.25f  // Vbatt = Vadc * ratio (390kΩ/120kΩ divider: (390+120)/120 = 4.25)
@@ -61,10 +52,8 @@ struct ControlData {
   uint16_t throttle;   // CRSF ch3
   uint16_t steering;   // CRSF ch1
   uint16_t battery_mv; // battery millivolts
-  uint16_t servo_ch2;  // raw/channel or angle for servo on RF channel 2
-  uint16_t servo_ch4;  // raw/channel or angle for servo on RF channel 4
 };
-volatile ControlData control = {0, 0, 0, 0, 0};
+volatile ControlData control = {0, 0, 0};
 
 // Concurrency primitives
 SemaphoreHandle_t controlMutex;
@@ -74,8 +63,6 @@ QueueHandle_t motorCmdQueue; // single-element queue carrying latest control sna
 HardwareSerial crsfSerial(1);
 AlfredoCRSF crsf;
 Adafruit_NeoPixel ws2812(WS2812_NUM_LEDS, WS2812_PIN, NEO_GRB + NEO_KHZ800);
-Servo servo1;
-Servo servo2;
 
 // ========================= BLE Server (NimBLE/Bluedroid compatible) =========================
 BLEServer *pServer = nullptr;
@@ -92,18 +79,42 @@ void taskBLE(void*);
 void controlMotorsFromValues(uint16_t roll, uint16_t throttle);
 void controlRelays();
 void updateSignalLed();
-void initServos();
-void controlServos(uint16_t ch2, uint16_t ch4);
 
 void setup()
 {
   Serial.begin(115200);
+  delay(1000); // Wait for serial monitor
+  Serial.println("\n\n=== RC Rover Control Starting ===");
   Serial.println("COM Serial initialized");
   
   // CRSF serial
+  Serial.print("Initializing CRSF on pins RX:");
+  Serial.print(PIN_RX);
+  Serial.print(" TX:");
+  Serial.print(PIN_TX);
+  Serial.print(" @ ");
+  Serial.print(CRSF_BAUDRATE);
+  Serial.println(" baud");
+  
   crsfSerial.begin(CRSF_BAUDRATE, SERIAL_8N1, PIN_RX, PIN_TX);
-  if (!crsfSerial) while (1) { Serial.println("Invalid crsfSerial configuration"); delay(1000); }
+  if (!crsfSerial) {
+    while (1) { 
+      Serial.println("ERROR: Invalid crsfSerial configuration"); 
+      delay(1000); 
+    }
+  }
   crsf.begin(crsfSerial);
+  Serial.println("CRSF initialized - waiting for receiver signal...");
+  
+  // Test serial data availability
+  delay(2000);
+  if (crsfSerial.available()) {
+    Serial.print("Serial data detected! Bytes available: ");
+    Serial.println(crsfSerial.available());
+  } else {
+    Serial.println("WARNING: No serial data detected from receiver!");
+    Serial.println("Check: 1) Receiver power, 2) Wiring (RX/TX), 3) Receiver is bound and transmitting");
+  }
 
   // Motor pins setup
   pinMode(LEFT_MOTOR_IN1, OUTPUT);
@@ -126,9 +137,6 @@ void setup()
   digitalWrite(RELAY2_PIN, LOW);
   digitalWrite(RELAY3_PIN, LOW);
   digitalWrite(RELAY4_PIN, LOW);
-
-  // Servo pins - initialize with hardware PWM
-  initServos();
 
   // Status LED + WS2812
   pinMode(SIGNAL_LED_PIN, OUTPUT);
@@ -206,35 +214,52 @@ void loop()
 void taskELRS(void* pv)
 {
   (void)pv;
-  TickType_t lastWake = xTaskGetTickCount();
-  const TickType_t period = pdMS_TO_TICKS(5); // process/update at ~200 Hz
+  static uint32_t lastDebugPrint = 0;
+  static uint32_t updateCount = 0;
+  static uint32_t packetCount = 0;
+  static uint32_t lastPacketCount = 0;
 
   for (;;) {
-    // Process CRSF incoming data
+    // Call update as frequently as possible - no delay in this loop!
+    // The AlfredoCRSF library needs frequent updates to process incoming serial data
     crsf.update();
-
+    updateCount++;
+    
     // Sample channels of interest
     ControlData snapshot;
     snapshot.steering = (uint16_t)crsf.getChannel(1); // roll
     snapshot.throttle = (uint16_t)crsf.getChannel(3); // throttle
-    snapshot.servo_ch2 = (uint16_t)crsf.getChannel(2);
-    snapshot.servo_ch4 = (uint16_t)crsf.getChannel(4);
+    
+    // Check if we received valid data (non-zero channels)
+    if (snapshot.steering != 0 || snapshot.throttle != 0) {
+      packetCount++;
+    }
+    
+    // Debug print every 2 seconds
+    if (millis() - lastDebugPrint >= 2000) {
+      Serial.print("[ELRS] Updates/sec: "); Serial.print(updateCount / 2);
+      Serial.print(" | Packets/sec: "); Serial.print((packetCount - lastPacketCount) / 2);
+      Serial.print(" | CH1: "); Serial.print(snapshot.steering);
+      Serial.print(" | CH3: "); Serial.println(snapshot.throttle);
+      lastDebugPrint = millis();
+      lastPacketCount = packetCount;
+      updateCount = 0;
+    }
 
     // Keep last battery in snapshot from shared (optional)
-    if (xSemaphoreTake(controlMutex, pdMS_TO_TICKS(1)) == pdTRUE) {
+    if (xSemaphoreTake(controlMutex, 0) == pdTRUE) {
       snapshot.battery_mv = control.battery_mv;
       // Update global shared state
       control.throttle = snapshot.throttle;
       control.steering = snapshot.steering;
-      control.servo_ch2 = snapshot.servo_ch2;
-      control.servo_ch4 = snapshot.servo_ch4;
       xSemaphoreGive(controlMutex);
     }
 
     // Push the latest to motor queue (overwrite if full)
     xQueueOverwrite(motorCmdQueue, &snapshot);
-
-    vTaskDelayUntil(&lastWake, period);
+    
+    // Minimal yield to allow other tasks to run, but keep this tight
+    vTaskDelay(1); // 1 tick = ~1ms, gives ~1000 updates/sec
   }
 }
 
@@ -252,19 +277,14 @@ void taskMotor(void* pv)
       if (xSemaphoreTake(controlMutex, pdMS_TO_TICKS(1)) == pdTRUE) {
         cmd.throttle = control.throttle;
         cmd.steering = control.steering;
-        cmd.servo_ch2 = control.servo_ch2;
-        cmd.servo_ch4 = control.servo_ch4;
         xSemaphoreGive(controlMutex);
       } else {
-        cmd.throttle = 0; cmd.steering = 0; cmd.servo_ch2 = 0; cmd.servo_ch4 = 0;
+        cmd.throttle = 0; cmd.steering = 0;
       }
     }
 
     // Drive motors using latest values
     controlMotorsFromValues(cmd.steering, cmd.throttle);
-
-    // Control servos from the snapshot (channels 2 and 4)
-    controlServos(cmd.servo_ch2, cmd.servo_ch4);
 
     // Relays + status LED from current CRSF state
     controlRelays();
@@ -308,15 +328,11 @@ void taskBLE(void* pv)
       snapshot.battery_mv = control.battery_mv;
       snapshot.throttle = control.throttle;
       snapshot.steering = control.steering;
-      snapshot.servo_ch2 = control.servo_ch2;
-      snapshot.servo_ch4 = control.servo_ch4;
       xSemaphoreGive(controlMutex);
     } else {
       snapshot.battery_mv = 0;
       snapshot.throttle = 0;
       snapshot.steering = 0;
-      snapshot.servo_ch2 = 0;
-      snapshot.servo_ch4 = 0;
     }
 
     // Debug output
@@ -325,11 +341,7 @@ void taskBLE(void* pv)
     Serial.print(" mV | Throttle: ");
     Serial.print(snapshot.throttle);
     Serial.print(" | Steering: ");
-    Serial.print(snapshot.steering);
-    Serial.print(" | Servo CH2: ");
-    Serial.print(snapshot.servo_ch2);
-    Serial.print(" | Servo CH4: ");
-    Serial.println(snapshot.servo_ch4);
+    Serial.println(snapshot.steering);
 
     // Update BLE characteristics if server is created
     if (pBatteryCharacteristic && pThrottleCharacteristic && pSteeringCharacteristic) {
@@ -453,62 +465,4 @@ void controlRelays()
   digitalWrite(RELAY4_PIN, crsf.getChannel(8) > 1500 ? HIGH : LOW);
 }
 
-// ========================= Servo Control =========================
-// Initialize servos using ESP32Servo library
-void initServos() {
-  // Allow allocation of all timers for servo library
-  ESP32PWM::allocateTimer(0);
-  ESP32PWM::allocateTimer(1);
-  ESP32PWM::allocateTimer(2);
-  ESP32PWM::allocateTimer(3);
-  
-  // Set servo PWM frequency (50Hz standard for servos)
-  servo1.setPeriodHertz(50);
-  servo2.setPeriodHertz(50);
-  
-  // Attach servos to pins with min/max pulse width in microseconds
-  // Standard servo: 500µs (0°) to 2500µs (180°)
-  servo1.attach(SERVO1_PIN, 500, 2500);
-  servo2.attach(SERVO2_PIN, 500, 2500);
-  
-  // Center servos at startup (90 degrees)
-  servo1.write(90);
-  servo2.write(90);
-
-  // Initialize shared servo state to middle (setup runs before RTOS primitives)
-  control.servo_ch2 = 90;
-  control.servo_ch4 = 90;
-}
-
-void controlServos(uint16_t ch2, uint16_t ch4) {
-  // Debug raw channel values
-  Serial.print("[Servo] raw CH2="); Serial.print(ch2);
-  Serial.print(" CH4="); Serial.println(ch4);
-
-  // Update servo1 if there's a valid value
-  if (ch2 != 0) {
-    int angle1 = map(ch2, 988, 2012, 0, 180);
-    angle1 = constrain(angle1, 0, 180);
-    if (SERVO1_INVERT) angle1 = 180 - angle1;
-    servo1.write(angle1);
-    if (xSemaphoreTake(controlMutex, pdMS_TO_TICKS(2)) == pdTRUE) {
-      control.servo_ch2 = (uint16_t)angle1;
-      xSemaphoreGive(controlMutex);
-    }
-  }
-
-  // Update servo2 if there's a valid value
-  if (ch4 != 0) {
-    int angle2 = map(ch4, 988, 2012, 0, 180);
-    angle2 = constrain(angle2, 0, 180);
-    if (SERVO2_INVERT) angle2 = 180 - angle2;
-    servo2.write(angle2);
-    if (xSemaphoreTake(controlMutex, pdMS_TO_TICKS(2)) == pdTRUE) {
-      control.servo_ch4 = (uint16_t)angle2;
-      xSemaphoreGive(controlMutex);
-    }
-  }
-}
-
 // ========================= BLE helpers =========================
-// BLE characteristics are updated in the taskBLE function above
