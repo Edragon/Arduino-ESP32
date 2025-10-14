@@ -14,8 +14,8 @@ Servo servoDN;
 // int servoDN_MaxUs = 2500;
 
 // Servo position variables
-// int pos1 = 90; // Servo 1 position (0-180 degrees)
-// int pos2 = 90; // Servo 2 position (0-180 degrees)
+int pos1 = 90; // Servo 1 position (0-180 degrees)
+int pos2 = 90; // Servo 2 position (0-180 degrees)
 
 void initServos() {
   // Servo setup using ESP32Servo library
