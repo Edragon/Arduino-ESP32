@@ -16,6 +16,8 @@ void setup() {
   Serial.begin(115200);
   delay(100);
 
+  Wire.begin(OLED_SDA, OLED_SCL);  // Add this line
+
   // Initialize OLED display
   display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR);
   display.clearDisplay();
