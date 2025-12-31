@@ -86,7 +86,7 @@ static const size_t htmlContentLength = strlen_P(htmlContent);
 void setup() {
   Serial.begin(115200);
 
-#if SOC_WIFI_SUPPORTED || CONFIG_ESP_WIFI_REMOTE_ENABLED || LT_ARD_HAS_WIFI
+#if ASYNCWEBSERVER_WIFI_SUPPORTED
   WiFi.mode(WIFI_AP);
   WiFi.softAP("esp-captive");
 #endif
@@ -94,7 +94,7 @@ void setup() {
   // first time: serves the file and cache headers
   // curl -N -v http://192.168.4.1/ --output -
   //
-  // secodn time: serves 304
+  // second time: serves 304
   // curl -N -v -H "if-none-match: 4272" http://192.168.4.1/ --output -
   //
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {

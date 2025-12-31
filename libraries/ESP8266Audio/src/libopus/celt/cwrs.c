@@ -27,15 +27,14 @@
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-//#ifdef HAVE_CONFIG_H
-#include "../config.h"
-//#endif
+#ifdef __STDC__
+#include "config.h"
+#endif
 
 #include "os_support.h"
 #include "cwrs.h"
 #include "mathops.h"
 #include "arch.h"
-#include <pgmspace.h>
 
 #ifdef CUSTOM_MODES
 
@@ -209,9 +208,9 @@ int log2_frac(opus_uint32 val, int frac)
    splitting a band from a standard Opus mode: 176, 144, 96, 88, 72, 64, 48,
    44, 36, 32, 24, 22, 18, 16, 8, 4, 2).*/
 #if defined(CUSTOM_MODES)
-static const opus_uint32 CELT_PVQ_U_DATA[1488] PROGMEM ={
+static const opus_uint32 CELT_PVQ_U_DATA[1488]={
 #else
-static const opus_uint32 CELT_PVQ_U_DATA[1272] PROGMEM ={
+static const opus_uint32 CELT_PVQ_U_DATA[1272]={
 #endif
   /*N=0, K=0...176:*/
   1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -411,7 +410,7 @@ static const opus_uint32 CELT_PVQ_U_DATA[1272] PROGMEM ={
 };
 
 #if defined(CUSTOM_MODES)
-static const opus_uint32 *const CELT_PVQ_U_ROW[15] PROGMEM={
+static const opus_uint32 *const CELT_PVQ_U_ROW[15]={
   CELT_PVQ_U_DATA+   0,CELT_PVQ_U_DATA+ 208,CELT_PVQ_U_DATA+ 415,
   CELT_PVQ_U_DATA+ 621,CELT_PVQ_U_DATA+ 826,CELT_PVQ_U_DATA+1030,
   CELT_PVQ_U_DATA+1233,CELT_PVQ_U_DATA+1336,CELT_PVQ_U_DATA+1389,
@@ -419,7 +418,7 @@ static const opus_uint32 *const CELT_PVQ_U_ROW[15] PROGMEM={
   CELT_PVQ_U_DATA+1464,CELT_PVQ_U_DATA+1470,CELT_PVQ_U_DATA+1473
 };
 #else
-static const opus_uint32 *const CELT_PVQ_U_ROW[15] PROGMEM={
+static const opus_uint32 *const CELT_PVQ_U_ROW[15]={
   CELT_PVQ_U_DATA+   0,CELT_PVQ_U_DATA+ 176,CELT_PVQ_U_DATA+ 351,
   CELT_PVQ_U_DATA+ 525,CELT_PVQ_U_DATA+ 698,CELT_PVQ_U_DATA+ 870,
   CELT_PVQ_U_DATA+1041,CELT_PVQ_U_DATA+1131,CELT_PVQ_U_DATA+1178,

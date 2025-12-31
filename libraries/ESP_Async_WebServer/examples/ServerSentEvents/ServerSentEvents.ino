@@ -58,7 +58,7 @@ static AsyncEventSource events("/events");
 void setup() {
   Serial.begin(115200);
 
-#if SOC_WIFI_SUPPORTED || CONFIG_ESP_WIFI_REMOTE_ENABLED || LT_ARD_HAS_WIFI
+#if ASYNCWEBSERVER_WIFI_SUPPORTED
   WiFi.mode(WIFI_AP);
   WiFi.softAP("esp-captive");
 #endif
@@ -71,12 +71,12 @@ void setup() {
   });
 
   events.onConnect([](AsyncEventSourceClient *client) {
-    Serial.printf("SSE Client connected! ID: %" PRIu32 "\n", client->lastId());
+    Serial.printf("SSE Client connected!");
     client->send("hello!", NULL, millis(), 1000);
   });
 
   events.onDisconnect([](AsyncEventSourceClient *client) {
-    Serial.printf("SSE Client disconnected! ID: %" PRIu32 "\n", client->lastId());
+    Serial.printf("SSE Client disconnected!");
   });
 
   server.addHandler(&events);

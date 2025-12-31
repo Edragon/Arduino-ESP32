@@ -30,18 +30,18 @@ Bbx bbx;
 //-------------------------------
 
 #ifdef ARDUINO_ARCH_RP2040
-  #include "BbxGizmoSdspi_RP2040.h"
+  #include "BbxGizmoSdcard_RP2.h"
+
 
   int Bbx::gizmo_create() {
     //create gizmo
+    delete gizmo;
     switch(config.gizmo) {
       case Cfg::bbx_gizmo_enum::mf_NONE :
         break;
       case Cfg::bbx_gizmo_enum::mf_SDSPI :
-        gizmo = new BbxGizmoSdspi(&config);
-        break;
       case Cfg::bbx_gizmo_enum::mf_SDMMC :
-        gizmo = new BbxGizmoSdspi(&config);
+        gizmo = BbxGizmoSdcard::create(&config);
         break;
     }
     return 0;
@@ -132,6 +132,11 @@ void Bbx::info() {
 int Bbx::read(const char* filename, uint8_t **data) {
   if(!gizmo) return 0;
   return gizmo->read(filename, data);
+}
+
+void Bbx::printSummary() {
+  if(!gizmo) return;
+  gizmo->printSummary();
 }
 
 //-------------------------------

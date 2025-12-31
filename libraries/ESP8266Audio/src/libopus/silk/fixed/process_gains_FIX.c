@@ -25,12 +25,12 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 ***********************************************************************/
 
-//#ifdef HAVE_CONFIG_H
-#include "../../config.h"
-//#endif
+#ifdef __STDC__
+#include "config.h"
+#endif
 
 #include "main_FIX.h"
-#include "../tuning_parameters.h"
+#include "tuning_parameters.h"
 
 /* Processing of gains */
 void silk_process_gains_FIX(

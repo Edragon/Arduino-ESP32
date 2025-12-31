@@ -99,6 +99,7 @@ const uint8_t Veh::flightmode_ap_ids[6] = VEH_FLIGHTMODE_AP_IDS; //mapping from 
 const char* Veh::flightmode_names[6] = VEH_FLIGHTMODE_NAMES; //define flightmode name strings for telemetry
 
 void madflight_setup() {
+  hal_usb_setup(); //setup USB CDC/MSC
   Serial.begin(115200); //start console serial
   
   // CFG - Configuration parameters (execute before delay to start LED)
@@ -111,16 +112,26 @@ void madflight_setup() {
   cfg.loadFromEeprom(); //load parameters from EEPROM
   cfg.load_madflight(madflight_board, madflight_config); //load config
 
-  // LED - Setup LED
+  // LED - Setup LED (execute before delay)
   led.config.gizmo = (Cfg::led_gizmo_enum)cfg.led_gizmo;
   led.config.pin = cfg.pin_led;
   led.setup();
   led.color(0x0000ff); //turn on blue to signal startup
   led.enabled = false; //do not change state until setup compled
 
+  // BBX - Black Box (execute before delay to start USB-MSC)
+  bbx.config.gizmo = (Cfg::bbx_gizmo_enum)cfg.bbx_gizmo; //the gizmo to use
+  bbx.config.spi_bus = hal_get_spi_bus(cfg.bbx_spi_bus); //SPI bus
+  bbx.config.spi_cs = cfg.pin_bbx_cs; //SPI select pin
+  bbx.config.pin_mmc_dat = cfg.pin_mmc_dat;
+  bbx.config.pin_mmc_clk = cfg.pin_mmc_clk;
+  bbx.config.pin_mmc_cmd = cfg.pin_mmc_cmd;
+  bbx.setup();
+
   // 6 second startup delay
   for(int i = 12; i > 0; i--) {
     Serial.printf(MADFLIGHT_VERSION " starting %d ...\n", i);
+    Serial.flush();
     #ifndef MF_DEBUG 
       delay(500);
     #else
@@ -150,6 +161,10 @@ void madflight_setup() {
   hal_setup();
 
   cli.print_i2cScan(); //print i2c scan
+
+  // LED and BBX summary
+  cfg.printModule("led");
+  bbx.printSummary();
 
   // RCL - Radio Control Link
   rcl.config.gizmo = (Cfg::rcl_gizmo_enum)cfg.rcl_gizmo; //the gizmo to use
@@ -210,15 +225,6 @@ void madflight_setup() {
   gps.config.baud = cfg.gps_baud; //baud rate
   gps.setup();
 
-  // BBX - Black Box
-  bbx.config.gizmo = (Cfg::bbx_gizmo_enum)cfg.bbx_gizmo; //the gizmo to use
-  bbx.config.spi_bus = hal_get_spi_bus(cfg.bbx_spi_bus); //SPI bus
-  bbx.config.spi_cs = cfg.pin_bbx_cs; //SPI select pin
-  bbx.config.pin_mmc_dat = cfg.pin_mmc_dat;
-  bbx.config.pin_mmc_clk = cfg.pin_mmc_clk;
-  bbx.config.pin_mmc_cmd = cfg.pin_mmc_cmd;
-  bbx.setup();
-
   // ALT - Altitude Estimator
   if(rdr.installed()) {
     alt.setup(rdr.dist);
@@ -248,6 +254,7 @@ void madflight_setup() {
   imu.config.i2c_bus = hal_get_i2c_bus(cfg.imu_i2c_bus); //I2C bus (only used if spi_bus==nullptr)
   imu.config.i2c_adr = cfg.imu_i2c_adr; //i2c address. 0=default address
   imu.config.uses_i2c = ((Cfg::imu_bus_type_enum)cfg.imu_bus_type == Cfg::imu_bus_type_enum::mf_I2C);
+  imu.config.pin_clkin = cfg.pin_imu_clkin; //CLKIN pin for ICM-42866-P - only tested for RP2 targets
 
   // Some sensors need a couple of tries...
   int tries = 10;

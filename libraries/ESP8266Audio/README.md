@@ -1,13 +1,10 @@
 # ESP8266Audio - supports ESP8266 & ESP32 & Raspberry Pi Pico RP2040 and Pico 2 RP2350 [![Gitter](https://badges.gitter.im/ESP8266Audio/community.svg)](https://gitter.im/ESP8266Audio/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 Arduino library for parsing and decoding MOD, WAV, MP3, FLAC, MIDI, AAC, and RTTL files and playing them on an I2S DAC or even using a software-simulated delta-sigma DAC with dynamic 32x-128x oversampling.
 
-# Raspberry Pi Pico (RP2040 and RP2350) Users
-Consider using [BackgroundAudio](https://github.com/earlephilhower/BackgroundAudio) instead of this library as it can provide a simpler usage model and better results and performance on the Pico by using an interrupt-based, frame-aligned output model.
-
-# ESP8266 and ESP32 Users
-ESP8266 is fully supported and most mature, but ESP32 is also mostly there with built-in DAC as well as external ones.
-
 For real-time, autonomous speech synthesis, check out [ESP8266SAM](https://github.com/earlephilhower/ESP8266SAM), a library which uses this one and a port of an ancient formant-based synthesis program to allow your ESP8266 to talk with low memory and no network required.
+
+# ESP32, Raspberry Pi Pico (RP2040 and RP2350) Users
+Consider using [BackgroundAudio](https://github.com/earlephilhower/BackgroundAudio) instead of this library as it can provide a simpler usage model and better results and performance on the Pico by using an interrupt-based, frame-aligned output model.
 
 ## Disclaimer
 All this code is released under the GPL, and all of it is to be used at your own risk.  If you find any bugs, please let me know via the GitHub issue tracker or drop me an email.
@@ -16,7 +13,7 @@ All this code is released under the GPL, and all of it is to be used at your own
 * The software I2S delta-sigma 32x oversampling DAC was my own creation, and sounds quite good if I do say so myself.
 * The AAC decode code is from the Helix project and licensed under RealNetwork's RSPL license.  For commercial use you're still going to need the usual AAC licensing from [Via Licensing](http://www.via-corp.com/us/en/licensing/aac/overview.html).  On the ESP32, AAC-SBR is supported (many webradio stations use this to reduce bandwidth even further).  The ESP8266, however, does not support it due to a lack of onboard RAM.
 * MIDI decoding comes from a highly ported [MIDITONES](https://github.com/LenShustek/miditones) combined with a massively memory-optimized [TinySoundFont](https://github.com/schellingb/TinySoundFont), see the respective source files for more information.
-* Opus, OGG, and OpusFile are from [Xiph.org](https://xiph.org) with the Xiph license and patent described in src/{opusfile,libggg,libopus}/COPYING..  **NOTE** Opus decoding currently only works on the ESP32 due to the large memory requirements of opusfile.  PRs to rewrite it to be less memory intensive would be much appreciated.
+* Opus is from [Xiph.org](https://xiph.org) with the Xiph license and patent described in src/{opusfile,libggg,libopus}/COPYING.
 
 ## Neat Things People Have Done With ESP8266Audio
 If you have a neat use for this library, [I'd love to hear about it](mailto:earlephilhower@yahoo.com)!
@@ -239,6 +236,13 @@ If you've built the amp but are not getting any sound, @msmcmickey wrote up a ve
 1. Is the transistor connected properly? Check the datasheet for this package style and make sure you have the leads connected properly. This package has three leads, and the lead that is by itself in the middle of the one side is the collector, not the base as you might expect it to be.
 2. If connected properly, do you have ~5 volts between the collector and emitter?
 3.  Was the transistor possibly damaged/overheated during soldering, or by connecting it improperly? Out-of-circuit diode check voltage drop test using a multimeter from base->emitter and base->collector should be between .5 and .7 volts. If it's shorted or open or conducting in both directions, then replace it and make sure it's connected properly.
+
+### User-Submitted Improvements for 1-Bit Output Modes (Sigma-Delta I2S, PDM)
+
+To improve the quality of the output, a 20kHZ low pass filter (LPF) was suggested by @kimstik
+![LPF Schematic](images/lpf.png)
+
+@MarianoSys provided a small amplification circuit that minimizes power draw when idle and provides some visual feedback, described in his [PDF](images/PWM%20audio%20amplifier%20with%20only%201%20transistor,%20power=0%20when%20RX%20signal%20is%20idle%20(high).pdf)
 
 ## SPDIF optical output 
 The proper way would be using optical TOSLINK transmitter (i.e. TOTXxxx). For testing, you can try with ~660nm red LED and resistor. Same as your basic Blink project with external LED, just that the LED will blink a bit faster. 

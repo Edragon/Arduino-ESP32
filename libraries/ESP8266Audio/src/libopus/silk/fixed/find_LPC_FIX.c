@@ -25,13 +25,13 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 ***********************************************************************/
 
-//#ifdef HAVE_CONFIG_H
-#include "../../config.h"
-//#endif
+#ifdef __STDC__
+#include "config.h"
+#endif
 
 #include "main_FIX.h"
-#include "../../celt/stack_alloc.h"
-#include "../tuning_parameters.h"
+#include "stack_alloc.h"
+#include "tuning_parameters.h"
 
 /* Finds LPC vector from correlations, and converts to NLSF */
 void silk_find_LPC_FIX(

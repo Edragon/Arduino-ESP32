@@ -25,12 +25,12 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 ***********************************************************************/
 
-//#ifdef HAVE_CONFIG_H
-#include "../../config.h"
-//#endif
+#ifdef __STDC__
+#include "config.h"
+#endif
 
 #include "main_FIX.h"
-#include "../../celt/stack_alloc.h"
+#include "stack_alloc.h"
 
 void silk_find_pred_coefs_FIX(
     silk_encoder_state_FIX          *psEnc,                                 /* I/O  encoder state                                                               */
@@ -42,7 +42,8 @@ void silk_find_pred_coefs_FIX(
 {
     opus_int         i;
     opus_int32       invGains_Q16[ MAX_NB_SUBFR ], local_gains[ MAX_NB_SUBFR ];
-    opus_int16       NLSF_Q15[ MAX_LPC_ORDER ];
+    /* Set to NLSF_Q15 to zero so we don't copy junk to the state. */
+    opus_int16       NLSF_Q15[ MAX_LPC_ORDER ]={0};
     const opus_int16 *x_ptr;
     opus_int16       *x_pre_ptr;
     VARDECL( opus_int16, LPC_in_pre );

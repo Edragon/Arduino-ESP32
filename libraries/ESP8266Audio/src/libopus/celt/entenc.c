@@ -25,9 +25,9 @@
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-//#if defined(HAVE_CONFIG_H)
-# include "../config.h"
-//#endif
+#if defined(__STDC__)
+# include "config.h"
+#endif
 #include "os_support.h"
 #include "arch.h"
 #include "entenc.h"
@@ -162,6 +162,17 @@ void ec_enc_bit_logp(ec_enc *_this,int _val,unsigned _logp){
 }
 
 void ec_enc_icdf(ec_enc *_this,int _s,const unsigned char *_icdf,unsigned _ftb){
+  opus_uint32 r;
+  r=_this->rng>>_ftb;
+  if(_s>0){
+    _this->val+=_this->rng-IMUL32(r,_icdf[_s-1]);
+    _this->rng=IMUL32(r,_icdf[_s-1]-_icdf[_s]);
+  }
+  else _this->rng-=IMUL32(r,_icdf[_s]);
+  ec_enc_normalize(_this);
+}
+
+void ec_enc_icdf16(ec_enc *_this,int _s,const opus_uint16 *_icdf,unsigned _ftb){
   opus_uint32 r;
   r=_this->rng>>_ftb;
   if(_s>0){

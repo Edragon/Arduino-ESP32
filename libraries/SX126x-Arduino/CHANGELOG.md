@@ -4,6 +4,11 @@ Arduino library for LoRa communication with Semtech SX126x chips. It is based on
 
 # Release Notes
 
+# V2.0.32 Add RAK3401/RAK3401
+  - Add RAK3401/RAK3401 support for RAK13300 and RAK13302 LoRa transceiver modules
+    # _**IMPORTANT:**_ 
+    _**RAK3400/RAK3401 support works only when using PlatformIO. ArduinoIDE is not supported at the moment**_
+
 # V2.0.31 Fix RAK3112
   - Correct LoRa pin assignment for RAK3112
   

@@ -27,9 +27,9 @@
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-//#ifdef HAVE_CONFIG_H
-#include "../config.h"
-//#endif
+#ifdef __STDC__
+#include "config.h"
+#endif
 
 #include "celt.h"
 #include "modes.h"
@@ -173,7 +173,10 @@ static void compute_allocation_table(CELTMode *mode)
    mode->nbAllocVectors = BITALLOC_SIZE;
    allocVectors = opus_alloc(sizeof(unsigned char)*(BITALLOC_SIZE*mode->nbEBands));
    if (allocVectors==NULL)
+   {
+      mode->allocVectors = NULL;
       return;
+   }
 
    /* Check for standard mode */
    if (mode->Fs == 400*(opus_int32)mode->shortMdctSize)

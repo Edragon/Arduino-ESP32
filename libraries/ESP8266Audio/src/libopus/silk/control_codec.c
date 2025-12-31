@@ -25,17 +25,17 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 ***********************************************************************/
 
-//#ifdef HAVE_CONFIG_H
-#include "../config.h"
-//#endif
+#ifdef __STDC__
+#include "config.h"
+#endif
 #ifdef FIXED_POINT
-#include "fixed/main_FIX.h"
+#include "main_FIX.h"
 #define silk_encoder_state_Fxx      silk_encoder_state_FIX
 #else
 #include "main_FLP.h"
 #define silk_encoder_state_Fxx      silk_encoder_state_FLP
 #endif
-#include "../celt/stack_alloc.h"
+#include "stack_alloc.h"
 #include "tuning_parameters.h"
 #include "pitch_est_defines.h"
 
@@ -415,7 +415,7 @@ static OPUS_INLINE opus_int silk_setup_LBRR(
             /* Previous packet did not have LBRR, and was therefore coded at a higher bitrate */
             psEncC->LBRR_GainIncreases = 7;
         } else {
-            psEncC->LBRR_GainIncreases = silk_max_int( 7 - silk_SMULWB( (opus_int32)psEncC->PacketLoss_perc, SILK_FIX_CONST( 0.4, 16 ) ), 2 );
+            psEncC->LBRR_GainIncreases = silk_max_int( 7 - silk_SMULWB( (opus_int32)psEncC->PacketLoss_perc, SILK_FIX_CONST( 0.2, 16 ) ), 3 );
         }
     }
 

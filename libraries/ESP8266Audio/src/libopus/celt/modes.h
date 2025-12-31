@@ -30,7 +30,7 @@
 #ifndef MODES_H
 #define MODES_H
 
-#include "../opus_types.h"
+#include "opus_types.h"
 #include "celt.h"
 #include "arch.h"
 #include "mdct.h"

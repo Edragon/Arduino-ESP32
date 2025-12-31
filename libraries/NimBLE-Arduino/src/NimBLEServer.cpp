@@ -490,8 +490,18 @@ int NimBLEServer::handleGapEvent(ble_gap_event* event, void* arg) {
             }
 
             pChar->m_pCallbacks->onStatus(pChar, event->notify_tx.status);
+            pChar->m_pCallbacks->onStatus(pChar, peerInfo, event->notify_tx.status);
             break;
         } // BLE_GAP_EVENT_NOTIFY_TX
+
+# if MYNEWT_VAL(BLE_ROLE_CENTRAL)
+        case BLE_GAP_EVENT_NOTIFY_RX: {
+            if (pServer->m_pClient && pServer->m_pClient->m_connHandle == event->notify_rx.conn_handle) {
+                NimBLEClient::handleGapEvent(event, pServer->m_pClient);
+            }
+            break;
+        } // BLE_GAP_EVENT_NOTIFY_RX
+# endif
 
         case BLE_GAP_EVENT_ADV_COMPLETE: {
 # if CONFIG_BT_NIMBLE_EXT_ADV && CONFIG_BT_NIMBLE_ROLE_BROADCASTER

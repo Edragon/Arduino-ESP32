@@ -25,12 +25,12 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 ***********************************************************************/
 
-//#ifdef HAVE_CONFIG_H
-#include "../../config.h"
-//#endif
+#ifdef __STDC__
+#include "config.h"
+#endif
 
 #include "main_FIX.h"
-#include "../../celt/stack_alloc.h"
+#include "stack_alloc.h"
 
 /* Calculates residual energies of input subframes where all subframes have LPC_order   */
 /* of preceding samples                                                                 */

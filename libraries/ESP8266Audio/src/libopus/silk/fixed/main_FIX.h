@@ -28,13 +28,13 @@ POSSIBILITY OF SUCH DAMAGE.
 #ifndef SILK_MAIN_FIX_H
 #define SILK_MAIN_FIX_H
 
-#include "../SigProc_FIX.h"
+#include "SigProc_FIX.h"
 #include "structs_FIX.h"
-#include "../control.h"
-#include "../main.h"
-#include "../PLC.h"
-#include "../debug.h"
-#include "../../celt/entenc.h"
+#include "control.h"
+#include "main.h"
+#include "PLC.h"
+#include "debug.h"
+#include "entenc.h"
 
 #if ((defined(OPUS_ARM_ASM) && defined(FIXED_POINT)) \
    || defined(OPUS_ARM_MAY_HAVE_NEON_INTR))

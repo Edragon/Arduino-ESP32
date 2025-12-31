@@ -10,7 +10,9 @@
  * For very small cards this program uses FAT16
  * and the above SDFormatter uses FAT12.
  */
+#ifndef DISABLE_FS_H_WARNING
 #define DISABLE_FS_H_WARNING  // Disable warning for type File not defined. 
+#endif  // DISABLE_FS_H_WARNING 
 #include "SdFat.h"
 #include "sdios.h"
 
@@ -43,9 +45,9 @@ const uint8_t SD_CS_PIN = SDCARD_SS_PIN;
 // Try to select the best SD card configuration.
 #if defined(HAS_TEENSY_SDIO)
 #define SD_CONFIG SdioConfig(FIFO_SDIO)
-#elif defined(RP_CLK_GPIO) && defined(RP_CMD_GPIO) && defined(RP_DAT0_GPIO)
-// See the Rp2040SdioSetup example for RP2040/RP2350 boards.
-#define SD_CONFIG SdioConfig(RP_CLK_GPIO, RP_CMD_GPIO, RP_DAT0_GPIO)
+#elif defined(HAS_BUILTIN_PIO_SDIO)
+// See the Rp2040SdioSetup example for boards without a builtin SDIO socket.
+#define SD_CONFIG SdioConfig(PIN_SD_CLK, PIN_SD_CMD_MOSI, PIN_SD_DAT0_MISO)
 #elif ENABLE_DEDICATED_SPI
 #define SD_CONFIG SdSpiConfig(SD_CS_PIN, DEDICATED_SPI, SPI_CLOCK)
 #else  // HAS_TEENSY_SDIO
@@ -56,7 +58,7 @@ const uint8_t SD_CS_PIN = SDCARD_SS_PIN;
 ArduinoOutStream cout(Serial);
 //------------------------------------------------------------------------------
 uint32_t cardSectorCount = 0;
-uint8_t sectorBuffer[512];
+uint8_t sectorBuffer[512] __attribute__ ((aligned (4)));
 //------------------------------------------------------------------------------
 // SdCardFactory constructs and initializes the appropriate card.
 SdCardFactory cardFactory;
@@ -203,11 +205,16 @@ void setup() {
   // Read any existing Serial data.
   clearSerialInput();
 
-  // Select and initialize proper card driver.
+  // Initialize card and fall back to 1 MHz if init or sectorCount() fails
   m_card = cardFactory.newCard(SD_CONFIG);
-  if (!m_card || m_card->errorCode()) {
-    sdError("card init failed.");
-    return;
+  if (!m_card || m_card->errorCode() || m_card->sectorCount() == 0) {
+    SdSpiConfig slowCfg(SD_CS_PIN, SHARED_SPI, SD_SCK_MHZ(1));
+    SdCard* slowCard = cardFactory.newCard(slowCfg);
+    if (!slowCard || slowCard->errorCode() || slowCard->sectorCount() == 0) {
+      sdError("card init failed.");
+      return;
+    }
+    m_card = slowCard;
   }
 
   cardSectorCount = m_card->sectorCount();
@@ -248,7 +255,12 @@ void setup() {
     return;
   }
   if (c == 'E' || c == 'F') {
-    eraseCard();
+    // XTSD/Zetta and some flash-based cards do not support SD erase commands
+    if (!m_card->erase(0, 0)) {
+      cout << F("\nErase unsupported — skipping erase step\n");
+    } else {
+      eraseCard();
+    }
   }
   if (c == 'F' || c == 'Q') {
     formatCard();

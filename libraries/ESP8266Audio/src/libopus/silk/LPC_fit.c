@@ -25,13 +25,14 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 ***********************************************************************/
 
-//#ifdef HAVE_CONFIG_H
-#include "../config.h"
-//#endif
+#ifdef __STDC__
+#include "config.h"
+#endif
 
 #include "SigProc_FIX.h"
 
-/* Convert int32 coefficients to int16 coefs and make sure there's no wrap-around */
+/* Convert int32 coefficients to int16 coefs and make sure there's no wrap-around.
+   This logic is reused in _celt_lpc(). Any bug fixes should also be applied there. */
 void silk_LPC_fit(
     opus_int16                  *a_QOUT,            /* O    Output signal                                               */
     opus_int32                    *a_QIN,             /* I/O  Input signal                                                */

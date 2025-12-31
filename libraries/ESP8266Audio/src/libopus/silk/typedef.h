@@ -28,8 +28,8 @@ POSSIBILITY OF SUCH DAMAGE.
 #ifndef SILK_TYPEDEF_H
 #define SILK_TYPEDEF_H
 
-#include "../opus_types.h"
-#include "../opus_defines.h"
+#include "opus_types.h"
+#include "opus_defines.h"
 
 #ifndef FIXED_POINT
 # include <float.h>
@@ -67,6 +67,9 @@ __attribute__((noreturn))
 static OPUS_INLINE void _silk_fatal(const char *str, const char *file, int line)
 {
    fprintf (stderr, "Fatal (internal) error in %s, line %d: %s\n", file, line, str);
+#if defined(_MSC_VER)
+   _set_abort_behavior( 0, _WRITE_ABORT_MSG);
+#endif
    abort();
 }
 #  define silk_assert(COND) {if (!(COND)) {silk_fatal("assertion failed: " #COND);}}

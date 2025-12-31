@@ -20,7 +20,7 @@ static AsyncWebServer server(80);
 void setup() {
   Serial.begin(115200);
 
-#if SOC_WIFI_SUPPORTED || CONFIG_ESP_WIFI_REMOTE_ENABLED || LT_ARD_HAS_WIFI
+#if ASYNCWEBSERVER_WIFI_SUPPORTED
   WiFi.mode(WIFI_AP);
   WiFi.softAP("esp-captive");
 #endif

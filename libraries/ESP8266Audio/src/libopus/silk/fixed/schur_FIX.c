@@ -25,11 +25,11 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 ***********************************************************************/
 
-//#ifdef HAVE_CONFIG_H
-#include "../../config.h"
-//#endif
+#ifdef __STDC__
+#include "config.h"
+#endif
 
-#include "../SigProc_FIX.h"
+#include "SigProc_FIX.h"
 
 /* Faster than schur64(), but much less accurate.                       */
 /* uses SMLAWB(), requiring armv5E and higher.                          */

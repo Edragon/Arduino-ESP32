@@ -25,14 +25,14 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 ***********************************************************************/
 
-//#ifdef HAVE_CONFIG_H
-#include "../../config.h"
-//#endif
+#ifdef __STDC__
+#include "config.h"
+#endif
 
-#include "../SigProc_FIX.h"
-#include "../define.h"
-#include "../tuning_parameters.h"
-#include "../../celt/pitch.h"
+#include "SigProc_FIX.h"
+#include "define.h"
+#include "tuning_parameters.h"
+#include "pitch.h"
 
 #define MAX_FRAME_SIZE              384             /* subfr_length * nb_subfr = ( 0.005 * 16000 + 16 ) * 4 = 384 */
 
@@ -57,18 +57,18 @@ void silk_burg_modified_c(
     opus_int         k, n, s, lz, rshifts, reached_max_gain;
     opus_int32       C0, num, nrg, rc_Q31, invGain_Q30, Atmp_QA, Atmp1, tmp1, tmp2, x1, x2;
     const opus_int16 *x_ptr;
-    opus_int32       *C_first_row = (opus_int32*)malloc(sizeof(opus_int32) * SILK_MAX_ORDER_LPC);
-    opus_int32       *C_last_row = (opus_int32*)malloc(sizeof(opus_int32) * SILK_MAX_ORDER_LPC);
-    opus_int32       *Af_QA = (opus_int32*)malloc(sizeof(opus_int32) * SILK_MAX_ORDER_LPC);
-    opus_int32       *CAf = (opus_int32*)malloc(sizeof(opus_int32) * (SILK_MAX_ORDER_LPC+1));
-    opus_int32       *CAb = (opus_int32*)malloc(sizeof(opus_int32) * (SILK_MAX_ORDER_LPC+1));
-    opus_int32       *xcorr = (opus_int32*)malloc(sizeof(opus_int32) * SILK_MAX_ORDER_LPC);
+    opus_int32       C_first_row[ SILK_MAX_ORDER_LPC ];
+    opus_int32       C_last_row[  SILK_MAX_ORDER_LPC ];
+    opus_int32       Af_QA[       SILK_MAX_ORDER_LPC ];
+    opus_int32       CAf[ SILK_MAX_ORDER_LPC + 1 ];
+    opus_int32       CAb[ SILK_MAX_ORDER_LPC + 1 ];
+    opus_int32       xcorr[ SILK_MAX_ORDER_LPC ];
     opus_int64       C0_64;
 
     celt_assert( subfr_length * nb_subfr <= MAX_FRAME_SIZE );
 
     /* Compute autocorrelations, added over subframes */
-    C0_64 = silk_inner_prod16_aligned_64( x, x, subfr_length*nb_subfr, arch );
+    C0_64 = silk_inner_prod16( x, x, subfr_length*nb_subfr, arch );
     lz = silk_CLZ64(C0_64);
     rshifts = 32 + 1 + N_BITS_HEAD_ROOM - lz;
     if (rshifts > MAX_RSHIFTS) rshifts = MAX_RSHIFTS;
@@ -87,7 +87,7 @@ void silk_burg_modified_c(
             x_ptr = x + s * subfr_length;
             for( n = 1; n < D + 1; n++ ) {
                 C_first_row[ n - 1 ] += (opus_int32)silk_RSHIFT64(
-                    silk_inner_prod16_aligned_64( x_ptr, x_ptr + n, subfr_length - n, arch ), rshifts );
+                    silk_inner_prod16( x_ptr, x_ptr + n, subfr_length - n, arch ), rshifts );
             }
         }
     } else {
@@ -150,7 +150,7 @@ void silk_burg_modified_c(
                     C_first_row[ k ] = silk_MLA( C_first_row[ k ], x1, x_ptr[ n - k - 1 ]            ); /* Q( -rshifts ) */
                     C_last_row[ k ]  = silk_MLA( C_last_row[ k ],  x2, x_ptr[ subfr_length - n + k ] ); /* Q( -rshifts ) */
                     Atmp1 = silk_RSHIFT_ROUND( Af_QA[ k ], QA - 17 );                                   /* Q17 */
-                    /* We sometimes have get overflows in the multiplications (even beyond +/- 2^32),
+                    /* We sometimes get overflows in the multiplications (even beyond +/- 2^32),
                        but they cancel each other and the real result seems to always fit in a 32-bit
                        signed integer. This was determined experimentally, not theoretically (unfortunately). */
                     tmp1 = silk_MLA_ovflw( tmp1, x_ptr[ n - k - 1 ],            Atmp1 );                      /* Q17 */
@@ -253,7 +253,7 @@ void silk_burg_modified_c(
         if( rshifts > 0 ) {
             for( s = 0; s < nb_subfr; s++ ) {
                 x_ptr = x + s * subfr_length;
-                C0 -= (opus_int32)silk_RSHIFT64( silk_inner_prod16_aligned_64( x_ptr, x_ptr, D, arch ), rshifts );
+                C0 -= (opus_int32)silk_RSHIFT64( silk_inner_prod16( x_ptr, x_ptr, D, arch ), rshifts );
             }
         } else {
             for( s = 0; s < nb_subfr; s++ ) {
@@ -277,10 +277,4 @@ void silk_burg_modified_c(
         *res_nrg = silk_SMLAWW( nrg, silk_SMMUL( SILK_FIX_CONST( FIND_LPC_COND_FAC, 32 ), C0 ), -tmp1 );/* Q( -rshifts ) */
         *res_nrg_Q = -rshifts;
     }
-    free(C_first_row);
-    free(C_last_row);
-    free(Af_QA);
-    free(CAf);
-    free(CAb);
-    free(xcorr);
 }

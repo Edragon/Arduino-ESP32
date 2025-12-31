@@ -25,8 +25,8 @@
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "../opus_types.h"
-#include "../opus_defines.h"
+#include "opus_types.h"
+#include "opus_defines.h"
 
 #if !defined(_entcode_H)
 # define _entcode_H (1)

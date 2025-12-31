@@ -26,9 +26,9 @@
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-//#ifdef HAVE_CONFIG_H
-#include "../config.h"
-//#endif
+#ifdef __STDC__
+#include "config.h"
+#endif
 
 #include <math.h>
 #include "modes.h"
@@ -356,6 +356,8 @@ static OPUS_INLINE int interp_bits2pulses(const CELTMode *m, int start, int end,
             else
                depth_threshold = 0;
 #ifdef FUZZING
+            (void)signalBandwidth;
+            (void)depth_threshold;
             if ((rand()&0x1) == 0)
 #else
             if (codedBands<=start+2 || (band_bits > (depth_threshold*band_width<<LM<<BITRES)>>4 && j<=signalBandwidth))

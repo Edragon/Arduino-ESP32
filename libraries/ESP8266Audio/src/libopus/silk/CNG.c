@@ -25,12 +25,12 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 ***********************************************************************/
 
-//#ifdef HAVE_CONFIG_H
-#include "../config.h"
-//#endif
+#ifdef __STDC__
+#include "config.h"
+#endif
 
 #include "main.h"
-#include "../celt/stack_alloc.h"
+#include "stack_alloc.h"
 
 /* Generates excitation for CNG LPC synthesis */
 static OPUS_INLINE void silk_CNG_exc(
@@ -118,6 +118,10 @@ void silk_CNG(
         /* Smooth gains */
         for( i = 0; i < psDec->nb_subfr; i++ ) {
             psCNG->CNG_smth_Gain_Q16 += silk_SMULWB( psDecCtrl->Gains_Q16[ i ] - psCNG->CNG_smth_Gain_Q16, CNG_GAIN_SMTH_Q16 );
+            /* If the smoothed gain is 3 dB greater than this subframe's gain, use this subframe's gain to adapt faster. */
+            if( silk_SMULWW( psCNG->CNG_smth_Gain_Q16, CNG_GAIN_SMTH_THRESHOLD_Q16 ) > psDecCtrl->Gains_Q16[ i ] ) {
+                psCNG->CNG_smth_Gain_Q16 = psDecCtrl->Gains_Q16[ i ];
+            }
         }
     }
 

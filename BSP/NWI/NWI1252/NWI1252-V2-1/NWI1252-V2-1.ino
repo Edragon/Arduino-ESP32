@@ -1,3 +1,6 @@
+
+// read only 
+
  /*   Multiple Serial test for XIAO ESP32C3 */
 HardwareSerial RS485(0);   //Create a new HardwareSerial class.
 HardwareSerial RS232(1);   //Create a new HardwareSerial class.

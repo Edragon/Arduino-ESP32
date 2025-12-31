@@ -25,25 +25,24 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 ***********************************************************************/
 
-//#ifdef HAVE_CONFIG_H
-#include "../config.h"
-//#endif
-#include <pgmspace.h>
+#ifdef __STDC__
+#include "config.h"
+#endif
 
 /* Approximate sigmoid function */
 
 #include "SigProc_FIX.h"
 
 /* fprintf(1, '%d, ', round(1024 * ([1 ./ (1 + exp(-(1:5))), 1] - 1 ./ (1 + exp(-(0:5)))))); */
-static const opus_int32 sigm_LUT_slope_Q10[ 6 ] PROGMEM  = {
+static const opus_int32 sigm_LUT_slope_Q10[ 6 ] = {
     237, 153, 73, 30, 12, 7
 };
 /* fprintf(1, '%d, ', round(32767 * 1 ./ (1 + exp(-(0:5))))); */
-static const opus_int32 sigm_LUT_pos_Q15[ 6 ] PROGMEM = {
+static const opus_int32 sigm_LUT_pos_Q15[ 6 ] = {
     16384, 23955, 28861, 31213, 32178, 32548
 };
 /* fprintf(1, '%d, ', round(32767 * 1 ./ (1 + exp((0:5))))); */
-static const opus_int32 sigm_LUT_neg_Q15[ 6 ] PROGMEM = {
+static const opus_int32 sigm_LUT_neg_Q15[ 6 ] = {
     16384, 8812, 3906, 1554, 589, 219
 };
 

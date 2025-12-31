@@ -34,8 +34,8 @@
 #ifndef ARCH_H
 #define ARCH_H
 
-#include "../opus_types.h"
-#include "../opus_defines.h"
+#include "opus_types.h"
+#include "opus_defines.h"
 
 # if !defined(__GNUC_PREREQ)
 #  if defined(__GNUC__)&&defined(__GNUC_MINOR__)
@@ -73,6 +73,9 @@ __attribute__((noreturn))
 void celt_fatal(const char *str, const char *file, int line)
 {
    fprintf (stderr, "Fatal (internal) error in %s, line %d: %s\n", file, line, str);
+#if defined(_MSC_VER)
+   _set_abort_behavior( 0, _WRITE_ABORT_MSG);
+#endif
    abort();
 }
 #endif

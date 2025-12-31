@@ -8,8 +8,6 @@ LoRaWAN version: **`MAC V1.0.2`** and Regional Parameters version: **`PHY V1.0.2
 
 # _**IMPORTANT:**_ 
 _**RAK11300 module (RP2040) support is only tested with the [ArduinoCore Mbed BSP](https://github.com/arduino/ArduinoCore-mbed). It will not work with other BSP's for the Raspberry RP2040.**_
-# _**NEWS:**_ 
-_**Current testing RAK11300/RAK11310 with the [Arduino Pico BSP](https://github.com/earlephilhower/arduino-pico), still experimental, but promising.**_
 
 ----
 ----
@@ -88,6 +86,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ----
 ## Changelog
 [Code releases](CHANGELOG.md)
+- 2025-10-23 Add RAK3401/RAK3401
+  - Add RAK3401/RAK3401 support for RAK13300 and RAK13302 LoRa transceiver modules
 - 2025-06-06 Fix RAK3112
   - Correct LoRa pin assignment for RAK3112
 - 2025-01-16 Fix RP2040 assert issue
@@ -411,6 +411,15 @@ The RAK4630/4631 module has the nRF52840 and SX1262 chips integrated in a module
 ```cpp
   lora_rak4630_init();
 ```
+----
+#### Simplified LoRa HW initialization for RAK3400/3401 module
+The RAK3400/3401 module is based on the nRF52840 and has no LoRa transceiver integrated. To add LoRa/LoRaWAN, it can be combined with the RAK13300 LoRa transceiver module or the 1W 30dBm TX power RAK13302 LoRa Booster module.    
+```cpp
+  lora_rak3400_init();
+```
+# _**IMPORTANT:**_ 
+_**RAK3400/RAK3401 support works only when using PlatformIO. ArduinoIDE is not supported at the moment**_
+
 ----
 #### Simplified LoRa HW initialization for RAK11300/11310 module
 The RAK11300/11310 module has the RP2040 and SX1262 chips integrated in a module. Therefore the hardware configuration is fixed.    

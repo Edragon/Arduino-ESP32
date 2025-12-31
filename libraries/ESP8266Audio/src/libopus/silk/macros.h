@@ -28,13 +28,13 @@ POSSIBILITY OF SUCH DAMAGE.
 #ifndef SILK_MACROS_H
 #define SILK_MACROS_H
 
-//#ifdef HAVE_CONFIG_H
-#include "../config.h"
-//#endif
+#ifdef __STDC__
+#include "config.h"
+#endif
 
-#include "../opus_types.h"
-#include "../opus_defines.h"
-#include "../celt/arch.h"
+#include "opus_types.h"
+#include "opus_defines.h"
+#include "arch.h"
 
 /* This is an OPUS_INLINE header file for general platform. */
 
@@ -108,7 +108,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "mips/macros_mipsr1.h"
 #endif
 
-#include "../celt/ecintrin.h"
+#include "ecintrin.h"
 #ifndef OVERRIDE_silk_CLZ16
 static OPUS_INLINE opus_int32 silk_CLZ16(opus_int16 in16)
 {

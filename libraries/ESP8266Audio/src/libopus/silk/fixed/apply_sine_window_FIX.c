@@ -25,11 +25,11 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 ***********************************************************************/
 
-//#ifdef HAVE_CONFIG_H
-#include "../../config.h"
-//#endif
+#ifdef __STDC__
+#include "config.h"
+#endif
 
-#include "../SigProc_FIX.h"
+#include "SigProc_FIX.h"
 
 /* Apply sine window to signal vector.                                      */
 /* Window types:                                                            */

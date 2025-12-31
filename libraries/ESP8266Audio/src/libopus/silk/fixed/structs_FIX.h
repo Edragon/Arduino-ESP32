@@ -28,9 +28,9 @@ POSSIBILITY OF SUCH DAMAGE.
 #ifndef SILK_STRUCTS_FIX_H
 #define SILK_STRUCTS_FIX_H
 
-#include "../typedef.h"
-#include "../main.h"
-#include "../structs.h"
+#include "typedef.h"
+#include "main.h"
+#include "structs.h"
 
 #ifdef __cplusplus
 extern "C"
