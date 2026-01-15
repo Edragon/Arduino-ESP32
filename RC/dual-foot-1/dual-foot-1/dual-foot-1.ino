@@ -6,15 +6,12 @@ const char* ssid = "motor_control";
 const char* password = "electrodragon";
 
 // ===== DRV8871 / GPIO 定义 (ESP32) =====
-// DRV8871 has two inputs IN1 and IN2. Apply PWM on one input and keep the other low to set direction.
+// DRV8871 has two inputs IN1 and IN2. Set both to control direction.
+// Forward: IN1=HIGH, IN2=LOW
+// Reverse: IN1=LOW, IN2=HIGH
+// Stop: IN1=LOW, IN2=LOW (or both HIGH for brake)
 const int IN1_PIN = 15;   // IN1 -> IO15
 const int IN2_PIN = 18;   // IN2 -> IO18
-
-// LEDC (ESP32 PWM) settings
-const int PWM_FREQ = 20000;      // 20 kHz PWM frequency
-const int PWM_RESOLUTION = 10;   // 10-bit resolution -> 0-1023
-const int PWM_CHANNEL1 = 0;      // channel for IN1
-const int PWM_CHANNEL2 = 1;      // channel for IN2
 
 // ===== Web Server =====
 WebServer server(80);
@@ -33,6 +30,7 @@ body {
   padding: 20px;
   background-color: #f0f0f0;
 }
+  
 h2 {
   text-align: center;
   color: #333;
@@ -179,34 +177,28 @@ void handleRoot() {
 }
 
 void handleControl() {
-  if (server.hasArg("speed")) {
-    int speed = server.arg("speed").toInt(); // PWM 值 0-1023
-    if (speed < 0) speed = 0;
-    if (speed > 1023) speed = 1023;
-
-    // 根据方向选择将 PWM 输出到 IN1 或 IN2 (DRV8871)
-    if (server.hasArg("dir")) {
-      String d = server.arg("dir");
-      if (d == "fw") {
-        // forward: PWM on IN1, IN2 low
-        ledcWrite(PWM_CHANNEL1, speed);
-        ledcWrite(PWM_CHANNEL2, 0);
-      } else {
-        // reverse: PWM on IN2, IN1 low
-        ledcWrite(PWM_CHANNEL1, 0);
-        ledcWrite(PWM_CHANNEL2, speed);
-      }
-    } else {
-      // if no dir provided, just set both channels to speed
-      ledcWrite(PWM_CHANNEL1, speed);
-      ledcWrite(PWM_CHANNEL2, speed);
+  // Check for direction control
+  if (server.hasArg("dir")) {
+    String d = server.arg("dir");
+    if (d == "fw") {
+      // Forward: IN1=HIGH, IN2=LOW
+      digitalWrite(IN1_PIN, HIGH);
+      digitalWrite(IN2_PIN, LOW);
+      Serial.println("Motor: Forward");
+    } else if (d == "rv") {
+      // Reverse: IN1=LOW, IN2=HIGH
+      digitalWrite(IN1_PIN, LOW);
+      digitalWrite(IN2_PIN, HIGH);
+      Serial.println("Motor: Reverse");
     }
   }
 
-  // allow stopping regardless of speed/dir args
-  if (server.hasArg("stop")) {
-    ledcWrite(PWM_CHANNEL1, 0);
-    ledcWrite(PWM_CHANNEL2, 0);
+  // Check for stop command
+  if (server.hasArg("stop") || (server.hasArg("speed") && server.arg("speed").toInt() == 0)) {
+    // Stop: both LOW
+    digitalWrite(IN1_PIN, LOW);
+    digitalWrite(IN2_PIN, LOW);
+    Serial.println("Motor: Stop");
   }
   
   server.sendHeader("Location", "/");
@@ -219,18 +211,13 @@ void setup() {
   delay(100);
   Serial.println("ESP32 DRV8871 AP Motor Controller starting...");
   
-  // Configure LEDC PWM channels and attach pins
-  ledcSetup(PWM_CHANNEL1, PWM_FREQ, PWM_RESOLUTION);
-  ledcSetup(PWM_CHANNEL2, PWM_FREQ, PWM_RESOLUTION);
-  ledcAttachPin(IN1_PIN, PWM_CHANNEL1);
-  ledcAttachPin(IN2_PIN, PWM_CHANNEL2);
-
+  // Configure GPIO pins as outputs
   pinMode(IN1_PIN, OUTPUT);
   pinMode(IN2_PIN, OUTPUT);
 
-  // 默认停止
-  ledcWrite(PWM_CHANNEL1, 0);
-  ledcWrite(PWM_CHANNEL2, 0);
+  // 默认停止 (both LOW)
+  digitalWrite(IN1_PIN, LOW);
+  digitalWrite(IN2_PIN, LOW);
 
   // 启动为 WiFi AP 模式，使用固定 IP
   Serial.println("Starting WiFi AP...");
