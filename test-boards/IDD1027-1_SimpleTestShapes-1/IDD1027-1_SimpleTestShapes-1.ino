@@ -1,28 +1,28 @@
+
 // Example sketch which shows how to display some patterns
 // on a 64x32 LED matrix
 //
 
+
 #include <ESP32-HUB75-MatrixPanel-I2S-DMA.h>
 
+#define R1 4
+#define G1 5
+#define BL1 6
+#define R2 7
+#define G2 15
+#define BL2 16
 
+#define CH_A 18
+#define CH_B 8
+#define CH_C 3
+#define CH_D 42
+#define CH_E 17 // assign to any available pin if using two panels or 64x64 panels with 1/32 scan
 
-#define R1_PIN_DEFAULT 25
-#define G1_PIN_DEFAULT 26
-#define B1_PIN_DEFAULT 27
+#define CLK 41
+#define LAT 40
+#define OE 2
 
-#define R2_PIN_DEFAULT 14
-#define G2_PIN_DEFAULT 12
-#define B2_PIN_DEFAULT 13
-
-#define A_PIN_DEFAULT  23
-#define B_PIN_DEFAULT  19
-#define C_PIN_DEFAULT  5
-#define D_PIN_DEFAULT  17
-#define E_PIN_DEFAULT  18
-
-#define LAT_PIN_DEFAULT 4
-#define OE_PIN_DEFAULT  5
-#define CLK_PIN_DEFAULT 16
 
 
 #define PANEL_RES_X 32      // Number of pixels wide of each INDIVIDUAL panel module. 
@@ -32,10 +32,7 @@
 //MatrixPanel_I2S_DMA dma_display;
 MatrixPanel_I2S_DMA *dma_display = nullptr;
 
-// Declare colors but don't initialize them yet
 uint16_t myBLACK, myWHITE, myRED, myGREEN, myBLUE;
-
-
 
 // Input a value 0 to 255 to get a color value.
 // The colours are a transition r - g - b - back to r.
@@ -109,6 +106,8 @@ void drawText(int colorWheelOffset)
 
 void setup() {
 
+  Serial.begin(115200);
+
   // Module configuration
   HUB75_I2S_CFG mxconfig(
     PANEL_RES_X,   // module width
@@ -116,19 +115,25 @@ void setup() {
     PANEL_CHAIN    // Chain length
   );
 
+  //mxconfig.gpio.e = 18;
+  //mxconfig.clkphase = false;
+  //mxconfig.driver = HUB75_I2S_CFG::FM6126A;
+
+  HUB75_I2S_CFG::i2s_pins _pins={R1, G1, BL1, R2, G2, BL2, CH_A, CH_B, CH_C, CH_D, CH_E, LAT, OE, CLK};
+
   // Display Setup
   dma_display = new MatrixPanel_I2S_DMA(mxconfig);
   dma_display->begin();
-  
-  // Now initialize colors after dma_display is created
+  dma_display->setBrightness8(90); //0-255
+  dma_display->clearScreen();
+
   myBLACK = dma_display->color565(0, 0, 0);
   myWHITE = dma_display->color565(255, 255, 255);
   myRED = dma_display->color565(255, 0, 0);
   myGREEN = dma_display->color565(0, 255, 0);
   myBLUE = dma_display->color565(0, 0, 255);
   
-  dma_display->setBrightness8(90); //0-255
-  dma_display->clearScreen();
+
   dma_display->fillScreen(myWHITE);
   
   // fix the screen with green
@@ -156,6 +161,8 @@ void setup() {
   dma_display->fillScreen(dma_display->color444(0, 0, 0));
 
   //drawText(0);
+
+  Serial.println("OK");
 
 }
 

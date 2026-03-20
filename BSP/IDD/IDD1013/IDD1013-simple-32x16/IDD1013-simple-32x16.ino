@@ -25,8 +25,8 @@
 #define CLK_PIN_DEFAULT 16
 
 
-#define PANEL_RES_X 32      // Number of pixels wide of each INDIVIDUAL panel module. 
-#define PANEL_RES_Y 16     // Number of pixels tall of each INDIVIDUAL panel module.
+#define PANEL_RES_X 256      // Number of pixels wide of each INDIVIDUAL panel module. 
+#define PANEL_RES_Y 128     // Number of pixels tall of each INDIVIDUAL panel module.
 #define PANEL_CHAIN 1      // Total number of panels chained one to another
  
 //MatrixPanel_I2S_DMA dma_display;
