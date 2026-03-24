@@ -4,29 +4,30 @@
 
 #include <ESP32-HUB75-MatrixPanel-I2S-DMA.h>
 
-#define G1_PIN_DEFAULT 4
-#define B1_PIN_DEFAULT 5
-#define R1_PIN_DEFAULT 6
+#define R1_PIN 4
+#define G1_PIN 5
+#define B1_PIN 6
 
-#define G2_PIN_DEFAULT 7
-#define B2_PIN_DEFAULT 15
-#define R2_PIN_DEFAULT 16
-
-#define A_PIN_DEFAULT  18
-#define B_PIN_DEFAULT  8
-#define C_PIN_DEFAULT  3
-#define D_PIN_DEFAULT  42
-#define E_PIN_DEFAULT  46
-
-#define LAT_PIN_DEFAULT 40
-#define OE_PIN_DEFAULT  2
-#define CLK_PIN_DEFAULT 41
+#define R2_PIN 7
+#define G2_PIN 15
+#define B2_PIN 16
 
 
-#define PANEL_RES_X 64      // Number of pixels wide of each INDIVIDUAL panel module. 
-#define PANEL_RES_Y 64     // Number of pixels tall of each INDIVIDUAL panel module.
-#define PANEL_CHAIN 1      // Total number of panels chained one to another
- 
+#define A_PIN 18
+#define B_PIN 8
+#define C_PIN 3
+#define D_PIN 42
+#define E_PIN 17
+
+#define LAT_PIN 40
+#define OE_PIN 2
+#define CLK_PIN 41
+
+
+#define PANEL_RES_X 64  // Number of pixels wide of each INDIVIDUAL panel module.
+#define PANEL_RES_Y 64  // Number of pixels tall of each INDIVIDUAL panel module.
+#define PANEL_CHAIN 1   // Total number of panels chained one to another
+
 //MatrixPanel_I2S_DMA dma_display;
 MatrixPanel_I2S_DMA *dma_display = nullptr;
 
@@ -39,9 +40,9 @@ uint16_t myBLACK, myWHITE, myRED, myGREEN, myBLUE;
 // The colours are a transition r - g - b - back to r.
 // From: https://gist.github.com/davidegironi/3144efdc6d67e5df55438cc3cba613c8
 uint16_t colorWheel(uint8_t pos) {
-  if(pos < 85) {
+  if (pos < 85) {
     return dma_display->color565(pos * 3, 255 - pos * 3, 0);
-  } else if(pos < 170) {
+  } else if (pos < 170) {
     pos -= 85;
     return dma_display->color565(255 - pos * 3, 0, pos * 3);
   } else {
@@ -50,85 +51,84 @@ uint16_t colorWheel(uint8_t pos) {
   }
 }
 
-void drawText(int colorWheelOffset)
-{
-  
-  // draw text with a rotating colour
-  dma_display->setTextSize(1);     // size 1 == 8 pixels high
-  dma_display->setTextWrap(false); // Don't wrap at end of line - will do ourselves
+void drawText(int colorWheelOffset) {
 
-  dma_display->setCursor(5, 0);    // start at top left, with 8 pixel of spacing
+  // draw text with a rotating colour
+  dma_display->setTextSize(1);      // size 1 == 8 pixels high
+  dma_display->setTextWrap(false);  // Don't wrap at end of line - will do ourselves
+
+  dma_display->setCursor(5, 0);  // start at top left, with 8 pixel of spacing
   uint8_t w = 0;
   const char *str = "ESP32 DMA";
-  for (w=0; w<strlen(str); w++) {
-    dma_display->setTextColor(colorWheel((w*32)+colorWheelOffset));
+  for (w = 0; w < strlen(str); w++) {
+    dma_display->setTextColor(colorWheel((w * 32) + colorWheelOffset));
     dma_display->print(str[w]);
   }
 
   dma_display->println();
   dma_display->print(" ");
-  for (w=9; w<18; w++) {
-    dma_display->setTextColor(colorWheel((w*32)+colorWheelOffset));
+  for (w = 9; w < 18; w++) {
+    dma_display->setTextColor(colorWheel((w * 32) + colorWheelOffset));
     dma_display->print("*");
   }
-  
+
   dma_display->println();
 
-  dma_display->setTextColor(dma_display->color444(15,15,15));
+  dma_display->setTextColor(dma_display->color444(15, 15, 15));
   dma_display->println("LED MATRIX!");
 
   // print each letter with a fixed rainbow color
-  dma_display->setTextColor(dma_display->color444(0,8,15));
+  dma_display->setTextColor(dma_display->color444(0, 8, 15));
   dma_display->print('3');
-  dma_display->setTextColor(dma_display->color444(15,4,0));
+  dma_display->setTextColor(dma_display->color444(15, 4, 0));
   dma_display->print('2');
-  dma_display->setTextColor(dma_display->color444(15,15,0));
+  dma_display->setTextColor(dma_display->color444(15, 15, 0));
   dma_display->print('x');
-  dma_display->setTextColor(dma_display->color444(8,15,0));
+  dma_display->setTextColor(dma_display->color444(8, 15, 0));
   dma_display->print('6');
-  dma_display->setTextColor(dma_display->color444(8,0,15));
+  dma_display->setTextColor(dma_display->color444(8, 0, 15));
   dma_display->print('4');
 
   // Jump a half character
   dma_display->setCursor(34, 24);
-  dma_display->setTextColor(dma_display->color444(0,15,15));
+  dma_display->setTextColor(dma_display->color444(0, 15, 15));
   dma_display->print("*");
-  dma_display->setTextColor(dma_display->color444(15,0,0));
+  dma_display->setTextColor(dma_display->color444(15, 0, 0));
   dma_display->print('R');
-  dma_display->setTextColor(dma_display->color444(0,15,0));
+  dma_display->setTextColor(dma_display->color444(0, 15, 0));
   dma_display->print('G');
-  dma_display->setTextColor(dma_display->color444(0,0,15));
+  dma_display->setTextColor(dma_display->color444(0, 0, 15));
   dma_display->print("B");
-  dma_display->setTextColor(dma_display->color444(15,0,8));
+  dma_display->setTextColor(dma_display->color444(15, 0, 8));
   dma_display->println("*");
-
 }
 
 
 void setup() {
 
+  HUB75_I2S_CFG::i2s_pins _pins = { R1_PIN, G1_PIN, B1_PIN, R2_PIN, G2_PIN, B2_PIN, A_PIN, B_PIN, C_PIN, D_PIN, E_PIN, LAT_PIN, OE_PIN, CLK_PIN };
   // Module configuration
   HUB75_I2S_CFG mxconfig(
-    PANEL_RES_X,   // module width
-    PANEL_RES_Y,   // module height
-    PANEL_CHAIN    // Chain length
+    PANEL_RES_X,  // module width
+    PANEL_RES_Y,  // module height
+    PANEL_CHAIN   // Chain length
   );
 
   // Display Setup
   dma_display = new MatrixPanel_I2S_DMA(mxconfig);
   dma_display->begin();
-  
+
   // Now initialize colors after dma_display is created
   myBLACK = dma_display->color565(0, 0, 0);
   myWHITE = dma_display->color565(255, 255, 255);
   myRED = dma_display->color565(255, 0, 0);
   myGREEN = dma_display->color565(0, 255, 0);
   myBLUE = dma_display->color565(0, 0, 255);
-  
-  dma_display->setBrightness8(90); //0-255
+
+  dma_display->setBrightness8(90);  //0-255
   dma_display->clearScreen();
   dma_display->fillScreen(myWHITE);
-  
+
   // fix the screen with green
   dma_display->fillRect(0, 0, dma_display->width(), dma_display->height(), dma_display->color444(0, 15, 0));
   delay(500);
@@ -138,8 +138,8 @@ void setup() {
   delay(500);
 
   // draw an 'X' in red
-  dma_display->drawLine(0, 0, dma_display->width()-1, dma_display->height()-1, dma_display->color444(15, 0, 0));
-  dma_display->drawLine(dma_display->width()-1, 0, 0, dma_display->height()-1, dma_display->color444(15, 0, 0));
+  dma_display->drawLine(0, 0, dma_display->width() - 1, dma_display->height() - 1, dma_display->color444(15, 0, 0));
+  dma_display->drawLine(dma_display->width() - 1, 0, 0, dma_display->height() - 1, dma_display->color444(15, 0, 0));
   delay(500);
 
   // draw a blue circle
@@ -154,18 +154,17 @@ void setup() {
   dma_display->fillScreen(dma_display->color444(0, 0, 0));
 
   //drawText(0);
-
 }
 
 uint8_t wheelval = 0;
 void loop() {
 
-    // animate by going through the colour wheel for the first two lines
-    drawText(wheelval);
-    wheelval +=1;
+  // animate by going through the colour wheel for the first two lines
+  drawText(wheelval);
+  wheelval += 1;
 
-    delay(20); 
-/*
+  delay(20);
+  /*
   drawText(0);
   delay(2000);
   dma_display->clearScreen();
@@ -180,5 +179,4 @@ void loop() {
   dma_display->fillScreen(myWHITE);
   dma_display->clearScreen();
   */
-  
 }

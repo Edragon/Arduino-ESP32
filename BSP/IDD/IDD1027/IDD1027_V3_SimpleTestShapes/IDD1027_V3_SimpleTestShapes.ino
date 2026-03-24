@@ -4,23 +4,24 @@
 
 #include <ESP32-HUB75-MatrixPanel-I2S-DMA.h>
 
-#define G1_PIN_DEFAULT 4
-#define B1_PIN_DEFAULT 5
-#define R1_PIN_DEFAULT 6
+#define R1_PIN_DEFAULT 11
+#define G1_PIN_DEFAULT 9
+#define B1_PIN_DEFAULT 10
 
-#define G2_PIN_DEFAULT 7
-#define B2_PIN_DEFAULT 15
-#define R2_PIN_DEFAULT 16
+#define R2_PIN_DEFAULT 14
+#define G2_PIN_DEFAULT 12
+#define B2_PIN_DEFAULT 13
 
-#define A_PIN_DEFAULT  18
-#define B_PIN_DEFAULT  8
-#define C_PIN_DEFAULT  3
-#define D_PIN_DEFAULT  42
-#define E_PIN_DEFAULT  46
 
-#define LAT_PIN_DEFAULT 40
-#define OE_PIN_DEFAULT  2
-#define CLK_PIN_DEFAULT 41
+#define A_PIN_DEFAULT  7
+#define B_PIN_DEFAULT  15
+#define C_PIN_DEFAULT  16
+#define D_PIN_DEFAULT  17
+#define E_PIN_DEFAULT  18
+
+#define LAT_PIN_DEFAULT 4
+#define OE_PIN_DEFAULT  5
+#define CLK_PIN_DEFAULT 6
 
 
 #define PANEL_RES_X 64      // Number of pixels wide of each INDIVIDUAL panel module. 
