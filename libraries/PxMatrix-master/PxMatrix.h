@@ -53,6 +53,14 @@ BSD license, check license.txt for more information
 #include "Arduino.h"
 #include <SPI.h>
 
+#if defined(ESP32)
+#if __has_include(<esp_arduino_version.h>)
+#include <esp_arduino_version.h>
+#else
+#define ESP_ARDUINO_VERSION_MAJOR 2
+#endif
+#endif
+
 #if defined(ARDUINO) && ARDUINO >= 100
 #include "Arduino.h"
 #else
@@ -80,8 +88,10 @@ BSD license, check license.txt for more information
   #define GPIO_REG_CLEAR(val) GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS,val)
 #endif
 #ifdef ESP32
-  #define GPIO_REG_SET(val) GPIO.out_w1ts = val
-  #define GPIO_REG_CLEAR(val) GPIO.out_w1tc = val
+  #include "soc/soc.h"
+  #include "soc/gpio_reg.h"
+  #define GPIO_REG_SET(val) REG_WRITE(GPIO_OUT_W1TS_REG, val)
+  #define GPIO_REG_CLEAR(val) REG_WRITE(GPIO_OUT_W1TC_REG, val)
 #endif
 #ifdef __AVR__
   #define GPIO_REG_SET(val) (val < 8) ? PORTD |= _BV(val) : PORTB |= _BV(val-8)
@@ -392,6 +402,10 @@ inline void PxMATRIX::init(uint16_t width, uint16_t height,uint8_t LATCH, uint8_
 #ifdef ESP32
 inline void PxMATRIX::fm612xWriteRegister(uint16_t reg_value, uint8_t reg_position)
 {
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+  // Core 3.x changed low-level SPI register layout; use generic bit-banged path.
+  writeRegister(reg_value, reg_position + 1);
+#else
     spi_t * spi = SPI.bus();
     // reg_value = 0x1234;  debug
 
@@ -417,6 +431,8 @@ inline void PxMATRIX::fm612xWriteRegister(uint16_t reg_value, uint8_t reg_positi
     SPI_BYTE(reg_value&0xff);
 
     GPIO_REG_CLEAR(1 << _LATCH_PIN);
+
+  #endif
 
 }
 #else
@@ -1293,7 +1309,7 @@ uint8_t *PxMATRIX_bufferp = PxMATRIX_buffer;
     
     if (_driver_chip == FM6124 || _driver_chip == FM6126A) // _driver_chip == FM6124
     {
-    #ifdef ESP32
+    #if defined(ESP32) && (ESP_ARDUINO_VERSION_MAJOR < 3)
 
       GPIO_REG_CLEAR( 1 << _OE_PIN);
       uint8_t* bf = &PxMATRIX_bufferp[_display_color*_buffer_size+i*_send_buffer_size];
@@ -1323,7 +1339,7 @@ uint8_t *PxMATRIX_bufferp = PxMATRIX_buffer;
       spiEndTransaction(spi);
       set_mux(i);
     #else
-      #if defined(ESP8266) || defined(ESP32)
+      #ifdef SPECIAL
         pinMode(_SPI_CLK, SPECIAL);
         pinMode(_SPI_MOSI, SPECIAL);
       #endif

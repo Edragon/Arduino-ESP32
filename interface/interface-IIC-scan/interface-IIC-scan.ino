@@ -9,7 +9,7 @@
 
 void setup()
 {
-  Wire.begin(15, 13);
+  Wire.begin(12, 11);
 
   Serial.begin(115200);
   Serial.println("\nI2C Scanner");

@@ -1,0 +1,9 @@
+SensorHub	KEYWORD1
+i2c_execute	KEYWORD2
+i2c_execute_16bit	KEYWORD2
+i2c_readByte	KEYWORD2
+i2c_read_Xbit_LE	KEYWORD2
+i2c_read_Xbit	KEYWORD2
+set_i2c_mode	KEYWORD2
+is_sensor_connected	KEYWORD2
+startTransmission	KEYWORD2
