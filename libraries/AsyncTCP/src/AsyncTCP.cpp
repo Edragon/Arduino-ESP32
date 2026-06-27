@@ -1337,11 +1337,11 @@ void AsyncServer::setNoDelay(bool nodelay){
     _noDelay = nodelay;
 }
 
-bool AsyncServer::getNoDelay(){
+bool AsyncServer::getNoDelay() const {
     return _noDelay;
 }
 
-uint8_t AsyncServer::status(){
+uint8_t AsyncServer::status() const {
     if (!_pcb) {
         return 0;
     }

@@ -194,8 +194,8 @@ class AsyncServer {
     void begin();
     void end();
     void setNoDelay(bool nodelay);
-    bool getNoDelay();
-    uint8_t status();
+    bool getNoDelay() const;
+    uint8_t status() const;
 
     //Do not use any of the functions below!
     static int8_t _s_accept(void *arg, tcp_pcb* newpcb, int8_t err);
