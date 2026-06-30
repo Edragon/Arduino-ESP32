@@ -153,6 +153,30 @@ void loop()
     leftSpeed = constrain(leftSpeed, -255, 255);
     rightSpeed = constrain(rightSpeed, -255, 255);
 
+    // Stagger motor starts to reduce initial current surge
+    static int lastLeftSent = 0;
+    static int lastRightSent = 0;
+    static unsigned long lastMotorStartedAt = 0;
+
+    if (leftSpeed != 0 && lastLeftSent == 0) {
+      if (millis() - lastMotorStartedAt < 150) {
+        leftSpeed = 0;
+      } else {
+        lastMotorStartedAt = millis();
+      }
+    }
+
+    if (rightSpeed != 0 && lastRightSent == 0) {
+      if (millis() - lastMotorStartedAt < 150) {
+        rightSpeed = 0;
+      } else {
+        lastMotorStartedAt = millis();
+      }
+    }
+    
+    lastLeftSent = leftSpeed;
+    lastRightSent = rightSpeed;
+
     setMotor(leftSpeed, M1_IN1, M1_IN2);
     setMotor(rightSpeed, M2_IN1, M2_IN2);
 
