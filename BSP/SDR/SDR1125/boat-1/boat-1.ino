@@ -20,8 +20,8 @@
 
 // Motor speed scalers (to compensate for motor variance)
 // Current issue: Left is faster, Right is slower
-float LEFT_MOTOR_SCALER = 1.0;
-float RIGHT_MOTOR_SCALER = 0.60;
+float LEFT_MOTOR_SCALER = 0.8;
+float RIGHT_MOTOR_SCALER = 0.5;
 
 // Reserved Servo IOs (not in use)
 #define SERVO1_PIN 11
